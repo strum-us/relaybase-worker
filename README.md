@@ -196,8 +196,6 @@ pnpm run build:bundle
 
 Dogfood operators in the Relaybase monorepo run `pnpm pack:worker-install` from the monorepo root to refresh `hq/website/public/downloads/`.
 
-Extraction from the product monorepo: [docs/worker-extraction.md](./docs/worker-extraction.md).
-
 ## License
 
 Source-available license (commercial redistribution and competing hosted service prohibited). See [LICENSE](./LICENSE). Personal and internal use on your own Cloudflare account is always permitted.
