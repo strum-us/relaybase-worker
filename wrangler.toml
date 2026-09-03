@@ -1,0 +1,42 @@
+# Relaybase Worker — deploy into YOUR Cloudflare account.
+# Fill in D1 database IDs after `wrangler d1 create` (see README.md).
+
+name = "relaybase-api"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+[vars]
+WORKER_SCRIPT_NAME = "relaybase-api"
+INBOUND_BUCKET_NAME = "relaybase-mailbox"
+WORKER_VERSION = "0.1.1"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[limits]
+cpu_ms = 300000
+
+[[send_email]]
+name = "EMAIL"
+
+[[r2_buckets]]
+binding = "INBOUND"
+bucket_name = "relaybase-mailbox"
+
+[[d1_databases]]
+binding = "RELAYBASE_LOGS"
+database_name = "relaybase-logs"
+database_id = "REPLACE_WITH_relaybase-logs_ID"
+migrations_dir = "db/log/migrations"
+
+[[d1_databases]]
+binding = "RELAYBASE_MAIL"
+database_name = "relaybase-mail"
+database_id = "REPLACE_WITH_relaybase-mail_ID"
+migrations_dir = "db/mail/migrations"
+
+[[d1_databases]]
+binding = "RELAYBASE_DB"
+database_name = "relaybase-db"
+database_id = "REPLACE_WITH_relaybase-db_ID"
+migrations_dir = "db/app/migrations"

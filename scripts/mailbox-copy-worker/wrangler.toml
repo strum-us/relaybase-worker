@@ -1,0 +1,13 @@
+name = "relaybase-mailbox-copy"
+main = "index.js"
+compatibility_date = "2025-06-01"
+account_id = "3adf03d991843094a7343eebc0a98007"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "SRC"
+bucket_name = "relaybase-inbound"
+
+[[r2_buckets]]
+binding = "DST"
+bucket_name = "relaybase-mailbox"

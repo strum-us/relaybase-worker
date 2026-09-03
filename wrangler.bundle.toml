@@ -1,0 +1,5 @@
+# Build-only Wrangler config — bundles server/src to worker.js for customer install.
+# No D1/R2 bindings; those are runtime concerns in the packed wrangler.toml.
+name = "relaybase-api"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"

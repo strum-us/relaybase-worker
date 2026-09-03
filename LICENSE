@@ -1,0 +1,21 @@
+Fair Source License 1.0 (draft)
+
+Copyright (c) 2026 Relaybase
+
+Permission is hereby granted to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to use, copy, modify, and
+deploy the Software into their own Cloudflare account for personal or internal
+business email infrastructure.
+
+The following uses are NOT permitted without explicit written permission:
+
+- Offering the Software (or a derivative) as a hosted or managed email service
+  to third parties
+- Selling or sublicensing the Software as a competing product to Relaybase
+- Removing or circumventing license or attribution notices
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+This is a draft license text for the open-source Worker repository. Replace
+with Business Source License (BSL) or Fair Source License (FSL) final text
+before public announcement.

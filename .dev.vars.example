@@ -1,0 +1,5 @@
+CF_ACCOUNT_ID=your_cloudflare_account_id
+CF_API_TOKEN=your_cloudflare_api_token_with_email_sending_edit
+AUTH_PEPPER=replace_me_with_a_long_random_string
+# Stripe Checkout webhook + license issuance now live in the console.relaybase.xyz
+# Next.js app (see console/), not on this Worker.
