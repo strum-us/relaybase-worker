@@ -27,7 +27,7 @@ release-worker-<semver>    # e.g. release-worker-0.1.1
 3. All release work on that branch
 4. Push branch
 5. Merge into `main`, push `main`
-6. Deploy `hq/website` so `downloads/*` is live
+6. Tag `vX.Y.Z` and publish a GitHub Release (`pnpm run publish:github`)
 7. Keep `release-worker-X.Y.Z` on the remote
 
 ---
@@ -70,34 +70,33 @@ pnpm pack:worker-install
 pnpm run pack:customer-install
 ```
 
-Pack runs `build:bundle`, writes the versioned ZIP, a stable alias, and
-`worker-install-manifest.json` (includes `notes` and `workerJs`). Previous
-`worker.{version}.js` files and versioned ZIPs under
-`relaybase/hq/website/public/downloads/` are kept.
+Pack runs `build:bundle` and writes versioned artifacts. Manifest `zipUrl` /
+`workerJsUrl` point at GitHub Releases
+(`https://github.com/strum-us/relaybase-worker/releases/download/vX.Y.Z/…`).
 Override the output directory with `RELAYBASE_DOWNLOADS_DIR`.
 
-### 4. Commit
+### 4. Publish GitHub Release
 
-Commit artifacts under `hq/website/public/downloads/`:
-
-- `relaybase-worker-install-{version}.zip`
-- `relaybase-worker-install.zip` (stable alias → latest)
-- `worker.{version}.js`
-- `worker-install-manifest.json`
-
-### 5. Deploy the website
+From this repo (requires `gh` auth):
 
 ```bash
-cd hq/website
-pnpm run deploy:cf
+pnpm run publish:github
 ```
 
-### 6. Verify
+This creates tag `vX.Y.Z` (if needed) and uploads:
+
+- `worker.X.Y.Z.js`
+- `relaybase-worker-install-X.Y.Z.zip`
+- `relaybase-worker-install.zip` (latest alias)
+- `worker-install-manifest.json`
+
+Pushing a `v*` tag also runs `.github/workflows/release.yml`.
+
+### 5. Verify
 
 ```bash
-curl -s https://relaybase.xyz/downloads/worker-install-manifest.json
-# expect version + notes matching this release
-curl -sI https://relaybase.xyz/downloads/relaybase-worker-install-X.Y.Z.zip | grep -i HTTP
+curl -sL https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json
+curl -sI https://github.com/strum-us/relaybase-worker/releases/download/vX.Y.Z/worker.X.Y.Z.js | grep -i HTTP
 ```
 
 ---
@@ -110,10 +109,18 @@ curl -sI https://relaybase.xyz/downloads/relaybase-worker-install-X.Y.Z.zip | gr
 | `worker.js` | Same bytes as `worker.{version}.js` (compat alias for 0.1.1 desktops) |
 | `wrangler.toml` | `main = "worker.{version}.js"`, `WORKER_VERSION`, D1/R2 bindings |
 | `VERSION` | Plaintext version for staging |
-| `worker-install-manifest.json` | `{ version, zipUrl, zipSha256, workerJs, publishedAt, notes }` |
+| `worker-install-manifest.json` | `{ version, zipUrl, zipSha256, workerJs, workerJsUrl, publishedAt, notes }` |
 
-Desktop auto-install and Worker updates download the manifest, verify SHA-256,
-unzip, and upload the script — **no `npm install`**, no local overlay.
+Desktop auto-install and Worker updates download the GitHub Release manifest,
+verify SHA-256, unzip, and upload the script — **no `npm install`**, no local overlay.
+
+Public URLs (after publish):
+
+| Asset | URL |
+|-------|-----|
+| Latest manifest | `https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json` |
+| Versioned Worker JS | `https://github.com/strum-us/relaybase-worker/releases/download/vX.Y.Z/worker.X.Y.Z.js` |
+| Versioned install ZIP | `https://github.com/strum-us/relaybase-worker/releases/download/vX.Y.Z/relaybase-worker-install-X.Y.Z.zip` |
 
 ## Desktop behavior
 

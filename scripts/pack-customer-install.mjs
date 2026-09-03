@@ -7,8 +7,10 @@
  *   2. Stage worker.{version}.js (+ worker.js alias) + wrangler.toml + README + VERSION
  *   3. ZIP as relaybase-worker-install-{version}.zip
  *   4. Write worker-install-manifest.json (version, zipUrl, sha256, workerJs, notes)
- *   5. Copy ZIP + worker.{version}.js to the Relaybase website downloads dir
- *      (RELAYBASE_DOWNLOADS_DIR, or sibling ../relaybase/hq/website/public/downloads).
+ *   5. Copy ZIP + worker.{version}.js + manifest to RELAYBASE_DOWNLOADS_DIR
+ *      (or sibling ../relaybase/hq/website/public/downloads, or dist/downloads).
+ *   6. Manifest zipUrl / workerJsUrl point at GitHub Releases
+ *      (https://github.com/strum-us/relaybase-worker/releases/download/v{version}/…).
  */
 import {
   cpSync,
@@ -40,7 +42,8 @@ const downloadsDir =
   (existsSync(siblingDownloads)
     ? siblingDownloads
     : join(serverRoot, "dist", "downloads"));
-const DOWNLOAD_BASE = "https://relaybase.xyz/downloads";
+const githubRepo =
+  process.env.RELAYBASE_WORKER_GITHUB_REPO?.trim() || "strum-us/relaybase-worker";
 
 const pkg = JSON.parse(readFileSync(join(serverRoot, "package.json"), "utf8"));
 const version = pkg.version;
@@ -98,6 +101,10 @@ if (!bundleSrc) {
 rmSync(staging, { recursive: true, force: true });
 mkdirSync(staging, { recursive: true });
 
+const tag = `v${version}`;
+const downloadBase =
+  process.env.RELAYBASE_DOWNLOAD_BASE?.trim() ||
+  `https://github.com/${githubRepo}/releases/download/${tag}`;
 const workerJsName = `worker.${version}.js`;
 cpSync(bundleSrc, join(staging, workerJsName));
 // Alias so 0.1.1 desktops that only look for worker.js still install/update.
@@ -168,9 +175,10 @@ const sha256 = await new Promise((resolve, reject) => {
 
 const manifest = {
   version,
-  zipUrl: `${DOWNLOAD_BASE}/${versionedZipName}`,
+  zipUrl: `${downloadBase}/${versionedZipName}`,
   zipSha256: sha256,
   workerJs: workerJsName,
+  workerJsUrl: `${downloadBase}/${workerJsName}`,
   publishedAt: new Date().toISOString(),
   notes,
 };
