@@ -9,7 +9,7 @@ export function decodeBase64String(value: string): ArrayBuffer | null {
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-    return bytes.buffer;
+    return bytes.buffer.slice(0, bytes.byteLength);
   } catch {
     return null;
   }
@@ -54,7 +54,10 @@ export function normalizeAttachmentBytes(
   content: Uint8Array | ArrayBuffer | string,
 ): ArrayBuffer {
   if (typeof content === "string") {
-    return decodeBase64String(content) ?? new TextEncoder().encode(content).buffer;
+    return (
+      decodeBase64String(content) ??
+      bytesToArrayBuffer(new TextEncoder().encode(content))
+    );
   }
   const bytes =
     content instanceof ArrayBuffer ? new Uint8Array(content) : content;
@@ -64,5 +67,12 @@ export function normalizeAttachmentBytes(
   }
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
-  return copy.buffer;
+  return bytesToArrayBuffer(copy);
+}
+
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
 }

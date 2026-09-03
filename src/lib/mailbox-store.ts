@@ -621,6 +621,7 @@ export async function storeSentMail(
         filename: item.filename,
         contentType: item.contentType,
         content: item.content,
+        size: item.size,
       })),
     });
 
@@ -662,7 +663,7 @@ export async function storeSentMail(
           bodyHtml: params.html ?? null,
           attachments: attachmentMeta,
         })
-      : new TextEncoder().encode(rawMime).buffer;
+      : new TextEncoder().encode(rawMime);
 
   const thin: ThinMailMeta = {
     id,
