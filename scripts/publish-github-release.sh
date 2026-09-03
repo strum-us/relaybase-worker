@@ -39,8 +39,21 @@ else
   NOTES_ARGS=(--notes "Relaybase Worker ${VERSION}")
 fi
 
+NOTES_BODY="$(node -e "
+const fs = require('fs');
+const raw = fs.readFileSync(process.argv[1], 'utf8').replace(/\r\n/g, '\n');
+const m = raw.match(/^---\n[\s\S]*?\n---\n?([\s\S]*)$/);
+process.stdout.write((m ? m[1] : raw).trim());
+" "$NOTES" 2>/dev/null || true)"
+if [[ -z "${NOTES_BODY:-}" && -f "$NOTES" ]]; then
+  NOTES_BODY="$(cat "$NOTES")"
+fi
+
 if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-  echo "Release $TAG exists — uploading assets (clobber)."
+  echo "Release $TAG exists — updating notes and uploading assets (clobber)."
+  if [[ -n "${NOTES_BODY:-}" ]]; then
+    gh release edit "$TAG" --repo "$REPO" --notes "$NOTES_BODY"
+  fi
   gh release upload "$TAG" --repo "$REPO" --clobber \
     "$WORKER_JS" "$ZIP" "$ZIP_ALIAS" "$MANIFEST"
 else

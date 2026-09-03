@@ -2,7 +2,18 @@
 
 Cloudflare Worker that powers [Relaybase](https://relaybase.xyz) product email — send, receive, inbox API, webhooks, and owner console routes. It runs entirely in **your** Cloudflare account. Relaybase does not host your mail.
 
-This repository is the open-source routing Worker. The Relaybase desktop app (`relaybase` monorepo) is a separate commercial product that connects to a deployed instance of this Worker.
+This repository is the open-source routing Worker. The Relaybase desktop app is a separate commercial product that connects to a deployed instance of this Worker.
+
+**Releases** (versioned `worker.X.Y.Z.js` + install ZIP):
+
+| | URL |
+|--|-----|
+| Latest release | https://github.com/strum-us/relaybase-worker/releases/latest |
+| Manifest | https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json |
+| Worker JS (0.1.1) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.1/worker.0.1.1.js |
+| Install ZIP (0.1.1) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.1/relaybase-worker-install-0.1.1.zip |
+
+How to cut a release: [docs/RELEASE.md](./docs/RELEASE.md).
 
 ## What this Worker does
 
@@ -94,9 +105,7 @@ curl -X POST "$WORKER_URL/console/migrate-db" \
   -d '{}'
 ```
 
-Connect the [Relaybase desktop app](https://relaybase.xyz): paste your Worker URL → the Worker issues an owner passtoken once.
-
-Manual install steps (Wrangler-only, no desktop): see [`customer-install/README.md`](./customer-install/README.md).
+Connect the [Relaybase desktop app](https://relaybase.xyz): paste your Worker URL → the Worker issues an owner passtoken once. The desktop can also auto-install from the GitHub Release ZIP above.
 
 ## Scripts
 
@@ -108,8 +117,7 @@ Manual install steps (Wrangler-only, no desktop): see [`customer-install/README.
 | `pnpm run typecheck` | TypeScript check |
 | `pnpm test` | Unit tests |
 | `pnpm run pack:customer-install` | Build versioned install ZIP under `dist/` |
-
-To publish install artifacts to the Relaybase website downloads folder, set `RELAYBASE_DOWNLOADS_DIR` to the target `public/downloads` path before packing (defaults to `../relaybase/hq/website/public/downloads` when that monorepo layout exists).
+| `pnpm run publish:github` | Pack and upload a GitHub Release (`v{version}`) |
 
 ## Environment
 
@@ -171,7 +179,7 @@ curl -X POST "$WORKER_URL/v1/send" \
 
 | Component | Repository | License |
 |-----------|------------|---------|
-| **This Worker** | `relaybase-worker` (this repo) | Source-available — see [LICENSE](./LICENSE) |
+| **This Worker** | `relaybase-worker` (this repo) | MIT — see [LICENSE](./LICENSE) |
 | Desktop app + inbox UI | Private `relaybase` monorepo | Commercial |
 
 The Worker is the trust layer: you deploy and audit it in your own account. The desktop app provides Spark-style inbox UX, one-click install, and license management.
@@ -182,10 +190,9 @@ The Worker is the trust layer: you deploy and audit it in your own account. The 
 relaybase-worker/
 ├── src/                 # Hono app, routes, lib
 ├── db/                  # Drizzle schemas + D1 migrations (app, mail, log)
-├── customer-install/    # Manual install docs + template wrangler.toml
-├── scripts/             # Pack install ZIP, R2 copy, mbox import
+├── scripts/             # Pack install ZIP, GitHub release
 ├── wrangler.toml        # Your deploy config (fill D1 ids)
-└── wrangler.bundle.toml # Build-only config for customer ZIP
+└── wrangler.bundle.toml # Build-only config for the install ZIP
 ```
 
 After changing routes or D1 helpers:
@@ -194,8 +201,8 @@ After changing routes or D1 helpers:
 pnpm run build:bundle
 ```
 
-Dogfood operators in the Relaybase monorepo run `pnpm pack:worker-install` from the monorepo root to refresh `hq/website/public/downloads/`.
+Ship a new public script with `pnpm run publish:github`.
 
 ## License
 
-Source-available license (commercial redistribution and competing hosted service prohibited). See [LICENSE](./LICENSE). Personal and internal use on your own Cloudflare account is always permitted.
+MIT. See [LICENSE](./LICENSE).

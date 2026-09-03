@@ -60,13 +60,7 @@ date: YYYY-MM-DD
 
 ### 3. Pack
 
-From the sibling `relaybase` repo root (or this repo):
-
 ```bash
-# from relaybase/
-pnpm pack:worker-install
-
-# or from this repo (writes into ../relaybase/hq/website/public/downloads when present)
 pnpm run pack:customer-install
 ```
 
@@ -107,7 +101,7 @@ curl -sI https://github.com/strum-us/relaybase-worker/releases/download/vX.Y.Z/w
 |--------|---------|
 | `worker.{version}.js` | Wrangler-bundled Worker (all deps inlined) |
 | `worker.js` | Same bytes as `worker.{version}.js` (compat alias for 0.1.1 desktops) |
-| `wrangler.toml` | `main = "worker.{version}.js"`, `WORKER_VERSION`, D1/R2 bindings |
+| `wrangler.toml` | Generated at pack time (`main = "worker.{version}.js"`) |
 | `VERSION` | Plaintext version for staging |
 | `worker-install-manifest.json` | `{ version, zipUrl, zipSha256, workerJs, workerJsUrl, publishedAt, notes }` |
 

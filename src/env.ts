@@ -21,6 +21,6 @@ export type Env = {
   AUTH_PEPPER?: string;
   WORKER_SCRIPT_NAME: string;
   INBOUND_BUCKET_NAME: string;
-  /** Set in customer-install wrangler.toml [vars] at pack time. */
+  /** Set in packed wrangler.toml [vars] at pack time. */
   WORKER_VERSION?: string;
 };

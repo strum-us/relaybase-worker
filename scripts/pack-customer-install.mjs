@@ -148,13 +148,10 @@ database_id = "REPLACE_WITH_relaybase-db_ID"
 `;
 writeFileSync(join(staging, "wrangler.toml"), wranglerToml);
 
-cpSync(
-  join(serverRoot, "customer-install", "README.md"),
-  join(staging, "README.md"),
-);
-if (existsSync(join(serverRoot, "customer-install", ".dev.vars.example"))) {
+cpSync(join(serverRoot, "README.md"), join(staging, "README.md"));
+if (existsSync(join(serverRoot, ".dev.vars.example"))) {
   cpSync(
-    join(serverRoot, "customer-install", ".dev.vars.example"),
+    join(serverRoot, ".dev.vars.example"),
     join(staging, ".dev.vars.example"),
   );
 }
