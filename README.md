@@ -1,3 +1,5 @@
+<img src="docs/icon.png" width="100" alt="Relaybase" />
+
 # Relaybase Worker
 
 Cloudflare Worker that powers [Relaybase](https://relaybase.xyz) product email — send, receive, inbox API, webhooks, and owner console routes. It runs entirely in **your** Cloudflare account. Relaybase does not host your mail.
