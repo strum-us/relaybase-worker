@@ -1,4 +1,9 @@
 import { CloudflareClient } from "./cloudflare-client";
+import {
+  isApexMxOwnerName,
+  isCloudflareMxContent,
+  normalizeDnsOwnerName,
+} from "./mx-apex-dns.ts";
 
 export type InboundRoutingEntry = {
   address: string;
@@ -108,16 +113,26 @@ function isMxConflictError(error: unknown): boolean {
   return error instanceof Error && error.message.includes(`[${MX_CONFLICT_ERROR_CODE}]`);
 }
 
-function isCloudflareMxContent(content: string): boolean {
-  return content.trim().toLowerCase().endsWith("mx.cloudflare.net");
-}
-
 export type MxConflictRecord = {
   id: string;
   name: string;
   content: string;
   priority?: number;
 };
+
+function mapMxConflict(record: {
+  id: string;
+  name: string;
+  content: string;
+  priority?: number;
+}): MxConflictRecord {
+  return {
+    id: record.id,
+    name: record.name,
+    content: record.content,
+    priority: record.priority,
+  };
+}
 
 /**
  * Apex MX records pointing to a non-Cloudflare mail provider. Only records at
@@ -129,20 +144,24 @@ export async function findConflictingMxRecords(
   zoneId: string,
   domain: string,
 ): Promise<MxConflictRecord[]> {
-  const apexNames = new Set([domain.toLowerCase(), "@"]);
-  const mxRecords = await cf.listDnsRecords(zoneId, { type: "MX" });
-  return mxRecords
-    .filter(
-      (record) =>
-        apexNames.has(record.name.toLowerCase()) &&
-        !isCloudflareMxContent(record.content),
-    )
-    .map((record) => ({
-      id: record.id,
-      name: record.name,
-      content: record.content,
-      priority: record.priority,
-    }));
+  const apex = normalizeDnsOwnerName(domain);
+  const [byApexName, allMx] = await Promise.all([
+    cf.listDnsRecords(zoneId, { type: "MX", name: apex }),
+    cf.listDnsRecords(zoneId, { type: "MX" }),
+  ]);
+  const seen = new Set<string>();
+  const conflicts: MxConflictRecord[] = [];
+  for (const record of [...byApexName, ...allMx]) {
+    if (seen.has(record.id)) continue;
+    seen.add(record.id);
+    if (
+      isApexMxOwnerName(record.name, domain) &&
+      !isCloudflareMxContent(record.content)
+    ) {
+      conflicts.push(mapMxConflict(record));
+    }
+  }
+  return conflicts;
 }
 
 /**

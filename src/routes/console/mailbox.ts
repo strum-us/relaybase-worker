@@ -4,8 +4,11 @@ import { requireConsoleSession } from "../../lib/auth";
 import { createCloudflareClient } from "../../lib/cloudflare-config";
 import { createAppDb } from "../../../db/app";
 import {
+  clearConflictingMxRecords,
   ensureInboundRouting,
+  findConflictingMxRecords,
   MxConflictError,
+  type MxConflictRecord,
   removeInboundWorkerRouting,
 } from "../../lib/inbound-routing";
 import {
@@ -123,25 +126,239 @@ consoleDomains.get("/", async (c) => {
   const denied = await requireConsoleSession(c);
   if (denied) return denied;
   const data = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
-  return c.json({ domains: listDomainSummaries(data) });
+  const summaries = listDomainSummaries(data);
+
+  if (c.env.CF_API_TOKEN) {
+    try {
+      const cf = await createCloudflareClient(c.env);
+      await Promise.allSettled(
+        summaries.map(async (summary) => {
+          try {
+            const zoneId = await cf.resolveZoneId(summary.domain);
+            if (!zoneId) return;
+            const conflicts = await findConflictingMxRecords(
+              cf,
+              zoneId,
+              summary.domain,
+            );
+            if (conflicts.length > 0) {
+              summary.onboarding = {
+                status: "failed",
+                currentStep: "routing_enable",
+                currentStepLabel: "Enable Email Routing",
+                lastError: `Non-Cloudflare MX records exist for ${summary.domain}. Remove them to enable Email Routing.`,
+                lastErrorCode: "MX_CONFLICT",
+                zoneId,
+                sendingSubdomainId: null,
+                mxConflicts: conflicts,
+                steps: [
+                  {
+                    id: "routing_enable",
+                    label: "Enable Email Routing",
+                    status: "failed",
+                    errorCode: "MX_CONFLICT",
+                    error: `Non-Cloudflare MX records exist for ${summary.domain}.`,
+                  },
+                ],
+              };
+            }
+          } catch {
+            // ignore per-domain probe failure
+          }
+        }),
+      );
+    } catch {
+      // ignore CF client init failure
+    }
+  }
+
+  return c.json({ domains: summaries });
 });
 
 consoleDomains.post("/", async (c) => {
   const denied = await requireConsoleSession(c);
   if (denied) return denied;
-  let body: { domain?: string };
+  let body: { domain?: string; forceMxResolve?: boolean };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: "Invalid JSON body" }, 400);
   }
+  const domain = normalizeDomain(body.domain ?? "");
+  if (!domain) {
+    return c.json({ error: "domain is required" }, 400);
+  }
+
+  let cf;
+  let zoneId: string | null = null;
+  let mxConflicts: MxConflictRecord[] = [];
+
   try {
-    const data = await addDomain(createAppDb(c.env.RELAYBASE_DB), body.domain ?? "");
-    const domain = normalizeDomain(body.domain ?? "");
+    cf = await createCloudflareClient(c.env);
+    zoneId = await cf.resolveZoneId(domain);
+  } catch {
+    // ignore if CF_API_TOKEN is not configured or resolve fails
+  }
+
+  if (cf && zoneId) {
+    try {
+      mxConflicts = await findConflictingMxRecords(cf, zoneId, domain);
+      if (mxConflicts.length > 0) {
+        if (body.forceMxResolve === true) {
+          await clearConflictingMxRecords(cf, zoneId, domain);
+          try {
+            await cf.enableEmailRouting(zoneId);
+          } catch {
+            // ignore if already enabled
+          }
+        } else {
+          const data = await addDomain(
+            createAppDb(c.env.RELAYBASE_DB),
+            domain,
+          );
+          const summaries = listDomainSummaries(data);
+          const targetSummary = summaries.find((d) => d.domain === domain);
+          if (targetSummary) {
+            targetSummary.onboarding = {
+              status: "failed",
+              currentStep: "routing_enable",
+              currentStepLabel: "Enable Email Routing",
+              lastError: `Non-Cloudflare MX records exist for ${domain}. Remove them to enable Email Routing.`,
+              lastErrorCode: "MX_CONFLICT",
+              zoneId,
+              sendingSubdomainId: null,
+              mxConflicts,
+              steps: [
+                {
+                  id: "routing_enable",
+                  label: "Enable Email Routing",
+                  status: "failed",
+                  errorCode: "MX_CONFLICT",
+                  error: `Non-Cloudflare MX records exist for ${domain}.`,
+                },
+              ],
+            };
+          }
+          return c.json(
+            {
+              error: `Non-Cloudflare MX records exist for ${domain}. Remove them to enable Email Routing.`,
+              mxConflict: true,
+              domain,
+              mxConflicts,
+              domains: summaries,
+              onboarding: targetSummary?.onboarding ?? null,
+            },
+            409,
+          );
+        }
+      } else {
+        try {
+          const routing = await cf.getEmailRoutingSettings(zoneId);
+          if (!routing.enabled) {
+            await cf.enableEmailRouting(zoneId);
+          }
+        } catch (err) {
+          if (err instanceof Error && err.message.includes(`[2008]`)) {
+            const conflicts = await findConflictingMxRecords(
+              cf,
+              zoneId,
+              domain,
+            );
+            const data = await addDomain(
+              createAppDb(c.env.RELAYBASE_DB),
+              domain,
+            );
+            const summaries = listDomainSummaries(data);
+            const targetSummary = summaries.find((d) => d.domain === domain);
+            if (targetSummary) {
+              targetSummary.onboarding = {
+                status: "failed",
+                currentStep: "routing_enable",
+                currentStepLabel: "Enable Email Routing",
+                lastError: `Non-Cloudflare MX records exist for ${domain}. Remove them to enable Email Routing.`,
+                lastErrorCode: "MX_CONFLICT",
+                zoneId,
+                sendingSubdomainId: null,
+                mxConflicts: conflicts,
+                steps: [
+                  {
+                    id: "routing_enable",
+                    label: "Enable Email Routing",
+                    status: "failed",
+                    errorCode: "MX_CONFLICT",
+                    error: `Non-Cloudflare MX records exist for ${domain}.`,
+                  },
+                ],
+              };
+            }
+            return c.json(
+              {
+                error: `Non-Cloudflare MX records exist for ${domain}. Remove them to enable Email Routing.`,
+                mxConflict: true,
+                domain,
+                mxConflicts: conflicts,
+                domains: summaries,
+                onboarding: targetSummary?.onboarding ?? null,
+              },
+              409,
+            );
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof MxConflictError) {
+        const data = await addDomain(
+          createAppDb(c.env.RELAYBASE_DB),
+          domain,
+        );
+        const summaries = listDomainSummaries(data);
+        const targetSummary = summaries.find((d) => d.domain === domain);
+        if (targetSummary) {
+          targetSummary.onboarding = {
+            status: "failed",
+            currentStep: "routing_enable",
+            currentStepLabel: "Enable Email Routing",
+            lastError: `Non-Cloudflare MX records exist for ${domain}. Remove them to enable Email Routing.`,
+            lastErrorCode: "MX_CONFLICT",
+            zoneId,
+            sendingSubdomainId: null,
+            mxConflicts: err.mxConflicts,
+            steps: [
+              {
+                id: "routing_enable",
+                label: "Enable Email Routing",
+                status: "failed",
+                errorCode: "MX_CONFLICT",
+                error: `Non-Cloudflare MX records exist for ${domain}.`,
+              },
+            ],
+          };
+        }
+        return c.json(
+          {
+            error: `Non-Cloudflare MX records exist for ${domain}. Remove them to enable Email Routing.`,
+            mxConflict: true,
+            domain: err.domain,
+            mxConflicts: err.mxConflicts,
+            domains: summaries,
+            onboarding: targetSummary?.onboarding ?? null,
+          },
+          409,
+        );
+      }
+    }
+  }
+
+  try {
+    const data = await addDomain(
+      createAppDb(c.env.RELAYBASE_DB),
+      domain,
+    );
     const summaries = listDomainSummaries(data);
     return c.json({
       domains: summaries,
-      onboarding: summaries.find((d) => d.domain === domain)?.onboarding ?? null,
+      onboarding:
+        summaries.find((d) => d.domain === domain)?.onboarding ?? null,
       message: `Added ${domain}.`,
     });
   } catch (error) {

@@ -439,14 +439,28 @@ export class CloudflareClient {
     zoneId: string,
     opts: { type?: string; name?: string } = {},
   ): Promise<CfDnsRecord[]> {
-    const params = new URLSearchParams();
-    if (opts.type) params.set("type", opts.type);
-    if (opts.name) params.set("name", opts.name);
-    const query = params.toString() ? `?${params.toString()}` : "";
-    const data = await this.request<CfDnsRecord[]>(
-      `/zones/${zoneId}/dns_records${query}`,
-    );
-    return data.result ?? [];
+    const records: CfDnsRecord[] = [];
+    let page = 1;
+    for (;;) {
+      const params = new URLSearchParams();
+      if (opts.type) params.set("type", opts.type);
+      if (opts.name) params.set("name", opts.name);
+      params.set("per_page", "100");
+      params.set("page", String(page));
+      const path = `/zones/${zoneId}/dns_records?${params.toString()}`;
+      const { res, data } = await this.requestOnce<CfDnsRecord[]>(path);
+      if (!res.ok || !data.success) {
+        throw this.formatCfError(res, data, path, "GET");
+      }
+      records.push(...(data.result ?? []));
+      const totalPages =
+        (data as CfResponse<CfDnsRecord[]> & {
+          result_info?: { total_pages?: number };
+        }).result_info?.total_pages ?? 1;
+      if (page >= totalPages) break;
+      page += 1;
+    }
+    return records;
   }
 
   async createDnsRecord(
