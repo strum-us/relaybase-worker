@@ -9,6 +9,10 @@ import {
   removeInboundWorkerRouting,
 } from "../../lib/inbound-routing";
 import {
+  CF_TOKEN_PERMISSION_ERROR_CODE,
+  isCloudflareTokenPermissionError,
+} from "../../lib/cloudflare-api-hints";
+import {
   addDomain,
   listDomainSummaries,
   normalizeDomain,
@@ -301,9 +305,12 @@ consoleAddresses.post("/", async (c) => {
       error instanceof Error
         ? error.message
         : "Failed to configure inbound routing";
+    const isPermError = isCloudflareTokenPermissionError(message);
     return c.json(
       {
         error: `Could not configure inbox for ${emails.join(", ")}: ${message}`,
+        code: isPermError ? CF_TOKEN_PERMISSION_ERROR_CODE : undefined,
+        domain,
       },
       502,
     );
@@ -392,7 +399,15 @@ consoleAddresses.patch("/", async (c) => {
         error instanceof Error
           ? error.message
           : "Failed to update inbound routing";
-      return c.json({ error: message }, 502);
+      const isPermError = isCloudflareTokenPermissionError(message);
+      return c.json(
+        {
+          error: message,
+          code: isPermError ? CF_TOKEN_PERMISSION_ERROR_CODE : undefined,
+          domain: current.domain,
+        },
+        502,
+      );
     }
   }
 

@@ -1,25 +1,11 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
 import { requireConsoleSession } from "../../lib/auth";
+import { probeCfApiTokenValid } from "../../lib/cloudflare-probe";
 import { probeD1Connection } from "../../lib/d1-status";
 import { emailBindingConfigured } from "../../lib/email-send";
 import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
 import { measureInboundR2Usage } from "../../lib/r2-usage";
-
-const CF_API = "https://api.cloudflare.com/client/v4";
-
-/** True when CF_API_TOKEN can call the Cloudflare API (Zone Read). */
-async function probeCfApiTokenValid(token: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${CF_API}/zones?per_page=1`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = (await res.json()) as { success?: boolean };
-    return data.success === true;
-  } catch {
-    return false;
-  }
-}
 
 const consoleConnect = new Hono<{ Bindings: Env }>();
 
