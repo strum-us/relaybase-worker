@@ -1,6 +1,6 @@
 {
   "name": "relaybase-worker",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "packageManager": "pnpm@9.12.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "deploy": "node scripts/deploy.mjs",
     "build:bundle": "wrangler deploy --dry-run --outdir dist/worker-build --config wrangler.bundle.toml",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types src/lib/mobile-config.test.ts src/lib/d1-migrations.test.ts src/lib/mail/local-deliver.test.ts src/lib/owner-tokens.test.ts src/lib/owner-auth-reset.test.ts src/lib/sending-health.test.ts src/lib/sending-onboard.test.ts src/lib/cloudflare-config.test.ts src/lib/cloudflare-account.test.ts src/lib/cloudflare-zones.test.ts src/lib/cloudflare-client-zones.test.ts src/lib/mime-parse.test.ts",
+    "test": "node --test --experimental-strip-types src/lib/mobile-config.test.ts src/lib/d1-migrations.test.ts src/lib/mail/local-deliver.test.ts src/lib/owner-tokens.test.ts src/lib/owner-auth-reset.test.ts src/lib/sending-health.test.ts src/lib/sending-onboard.test.ts src/lib/cloudflare-config.test.ts src/lib/cloudflare-account.test.ts src/lib/cloudflare-zones.test.ts src/lib/cloudflare-client-zones.test.ts src/lib/mime-parse.test.ts src/lib/cloudflare-probe.test.ts src/lib/mx-apex-dns.test.ts",
     "pack:customer-install": "node scripts/pack-customer-install.mjs",
     "publish:github": "bash scripts/publish-github-release.sh",
     "copy:mailbox-r2": "node scripts/copy-mailbox-r2.mjs",

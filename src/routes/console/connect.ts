@@ -1,25 +1,13 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
 import { requireConsoleSession } from "../../lib/auth";
+import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
 import { probeD1Connection } from "../../lib/d1-status";
 import { emailBindingConfigured } from "../../lib/email-send";
 import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
 import { measureInboundR2Usage } from "../../lib/r2-usage";
-
-const CF_API = "https://api.cloudflare.com/client/v4";
-
-/** True when CF_API_TOKEN can call the Cloudflare API (Zone Read). */
-async function probeCfApiTokenValid(token: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${CF_API}/zones?per_page=1`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = (await res.json()) as { success?: boolean };
-    return data.success === true;
-  } catch {
-    return false;
-  }
-}
+import { createAppDb } from "../../../db/app";
+import { readMailbox } from "../../lib/catalog-store";
 
 const consoleConnect = new Hono<{ Bindings: Env }>();
 
@@ -44,7 +32,19 @@ consoleConnect.get("/", async (c) => {
   const r2Configured = await checkInboundR2(c.env.INBOUND);
   const apiToken = c.env.CF_API_TOKEN?.trim() ?? "";
   const cfApiTokenSet = Boolean(apiToken);
-  const [usage, d1, cfApiTokenValid, accountId] = await Promise.all([
+
+  // Read known domains so the probe can disambiguate "no zones" from
+  // "Zone Read permission missing" (Cloudflare returns an empty list in
+  // the latter case when zone-scoped permissions exist).
+  let knownDomains: string[] = [];
+  try {
+    const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+    knownDomains = mailbox.domains;
+  } catch {
+    // ignore — probe will treat empty as "unknown" for Zone Read
+  }
+
+  const [usage, d1, cfApiTokenProbe, accountId] = await Promise.all([
     r2Configured ? measureInboundR2Usage(c.env.INBOUND) : Promise.resolve(null),
     probeD1Connection(
       c.env.RELAYBASE_LOGS,
@@ -53,7 +53,9 @@ consoleConnect.get("/", async (c) => {
       c.env.CF_ACCOUNT_ID,
       c.env.CF_API_TOKEN,
     ),
-    cfApiTokenSet ? probeCfApiTokenValid(apiToken) : Promise.resolve(false),
+    cfApiTokenSet
+      ? probeCfApiTokenPermissions(apiToken, { knownDomains })
+      : Promise.resolve(null),
     pinnedCfAccountId(c.env),
   ]);
 
@@ -73,8 +75,10 @@ consoleConnect.get("/", async (c) => {
     d1,
     // Worker has a CF_API_TOKEN secret (domain / routing / DNS API).
     cfApiTokenSet,
-    // Secret is present and Cloudflare accepted a Zone Read probe.
-    cfApiTokenValid,
+    // Secret is present and Cloudflare accepted Zone Read + routing/DNS Edit.
+    cfApiTokenValid: cfApiTokenProbe?.valid ?? false,
+    // Per-row probe (Zone Read / Email Routing Rules Edit / DNS Edit).
+    cfApiTokenPermissions: cfApiTokenProbe?.permissions ?? null,
     emailBindingConfigured: emailBindingConfigured(c.env),
   });
 });

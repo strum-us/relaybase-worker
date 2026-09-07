@@ -1,6 +1,9 @@
 /** Relaybase API code when Cloudflare Email Sending requires Workers Paid. */
 export const CF_WORKERS_PAID_REQUIRED_CODE = "cf_workers_paid_required";
 
+/** Relaybase API code when Cloudflare API token lacks required permissions (e.g. Email Routing). */
+export const CF_TOKEN_PERMISSION_ERROR_CODE = "cf_token_permission_missing";
+
 /**
  * Free accounts often get zone Email Sending APIs as [2036] Unauthorized
  * instead of Email Sending’s [10105] not_entitled.
@@ -57,6 +60,33 @@ export function cloudflareSendErrorBody(message: string): {
   return { error: message };
 }
 
+/** True when Cloudflare rejected a request due to token authentication/permission issues. */
+export function isCloudflareTokenPermissionError(
+  input: string | Array<{ code?: number; message?: string }> | undefined,
+): boolean {
+  if (!input) return false;
+  const match = (msg: string) => {
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes("[10000]") ||
+      lower.includes("10101") ||
+      lower.includes("10102") ||
+      lower.includes("10103") ||
+      lower.includes("authentication error") ||
+      lower.includes("unauthorized") ||
+      lower.includes("forbidden") ||
+      lower.includes("email/routing")
+    );
+  };
+  if (Array.isArray(input)) {
+    return input.some((e) => {
+      if (e.code === 10000 || e.code === 10101 || e.code === 10102 || e.code === 10103) return true;
+      return match(e.message ?? "");
+    });
+  }
+  return match(input);
+}
+
 /** Human-readable permission hints for Cloudflare API auth failures (code 10000). */
 export function cloudflarePermissionHint(
   path: string,
@@ -64,6 +94,13 @@ export function cloudflarePermissionHint(
 ): string | null {
   const m = method.toUpperCase();
   const p = path.split("?")[0] ?? path;
+
+  if (p.includes("/email/sending/subdomains")) {
+    return [
+      `Endpoint: ${m} /zones/{{zone_id}}/email/sending/subdomains`,
+      "Required: Account → Email Sending → Edit",
+    ].join("\n");
+  }
 
   if (p.includes("/email/sending/send")) {
     return [
@@ -85,6 +122,14 @@ export function cloudflarePermissionHint(
     return [
       `Endpoint: ${m} /zones/{{zone_id}}/email/routing/rules`,
       "Required: Zone → Email Routing Rules → Edit",
+    ].join("\n");
+  }
+
+  if (p.includes("/email/routing")) {
+    return [
+      `Endpoint: ${m} /zones/{{zone_id}}/email/routing`,
+      "Required: Zone → Email Routing Rules → Edit (or Zone → Zone Settings → Edit)",
+      "Ensure this domain is included in the token's Zone Resources (or All zones).",
     ].join("\n");
   }
 
