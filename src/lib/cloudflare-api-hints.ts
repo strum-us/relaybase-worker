@@ -95,6 +95,13 @@ export function cloudflarePermissionHint(
   const m = method.toUpperCase();
   const p = path.split("?")[0] ?? path;
 
+  if (p.includes("/email/sending/subdomains")) {
+    return [
+      `Endpoint: ${m} /zones/{{zone_id}}/email/sending/subdomains`,
+      "Required: Account → Email Sending → Edit",
+    ].join("\n");
+  }
+
   if (p.includes("/email/sending/send")) {
     return [
       `Endpoint: ${m} /accounts/{{account_id}}/email/sending/send`,

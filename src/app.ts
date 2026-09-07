@@ -11,13 +11,12 @@ import { consoleSendLogs } from "./routes/console/send-logs";
 import { consoleStats } from "./routes/console/stats";
 import { consoleBroadcasts } from "./routes/console/broadcasts";
 import { consoleConnect } from "./routes/console/connect";
+import { consoleCfTokenPermissions } from "./routes/console/cf-token-permissions";
 import { consoleInitDb } from "./routes/console/init-db";
 import { consoleMigrateDb } from "./routes/console/migrate-db";
-import {
-  consoleAddresses,
-  consoleDomains,
-  consoleMailbox,
-} from "./routes/console/mailbox";
+import { consoleAddresses } from "./routes/console/addresses";
+import { consoleDomains } from "./routes/console/domains";
+import { consoleMailbox } from "./routes/console/mailbox";
 import { consoleBranding } from "./routes/console/branding";
 import { consoleKeys } from "./routes/console/keys";
 import { consoleMailboxHealth } from "./routes/console/mailbox-health";
@@ -88,6 +87,7 @@ app.route("/console/ops-logs", consoleOpsLogs);
 app.route("/console/send-logs", consoleSendLogs);
 app.route("/console/branding", consoleBranding);
 app.route("/console/connect", consoleConnect);
+app.route("/console/cf-token-permissions", consoleCfTokenPermissions);
 app.route("/console/init-db", consoleInitDb);
 app.route("/console/migrate-db", consoleMigrateDb);
 app.route("/console/register-owner", consoleRegisterOwner);

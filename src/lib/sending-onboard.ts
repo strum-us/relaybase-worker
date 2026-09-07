@@ -5,8 +5,10 @@ import {
 } from "./cloudflare-client";
 import {
   CF_WORKERS_PAID_REQUIRED_CODE,
+  CF_TOKEN_PERMISSION_ERROR_CODE,
   cloudflareSendErrorBody,
   isCloudflarePlanError,
+  isCloudflareTokenPermissionError,
 } from "./cloudflare-api-hints";
 import { isSendingOwnedDnsRecord } from "./sending-onboard-dns";
 import {
@@ -15,6 +17,7 @@ import {
   sendingRowMatchesDomain,
   type SendingHealthDomain,
 } from "./sending-health";
+import { probeCfApiTokenPermissions } from "./cloudflare-probe";
 
 export { isSendingOwnedDnsRecord } from "./sending-onboard-dns";
 
@@ -54,6 +57,13 @@ export type SendingOnboardResult =
       code: typeof CF_WORKERS_PAID_REQUIRED_CODE;
       domain: string;
       error: string;
+    }
+  | {
+      ok: false;
+      code: "cf_token_permission_missing";
+      domain: string;
+      error: string;
+      cfApiTokenPermissions: unknown;
     };
 
 const NO_ZONE_ERROR =
@@ -110,7 +120,12 @@ async function enableOrCreateSending(
 export async function onboardSendingDomain(
   cf: CloudflareClient,
   domainInput: string,
-  opts: { confirmReplace?: boolean; accountId?: string } = {},
+  opts: {
+    confirmReplace?: boolean;
+    accountId?: string;
+    cfApiToken?: string;
+    knownDomains?: string[];
+  } = {},
 ): Promise<SendingOnboardResult> {
   const domain = domainInput.trim().toLowerCase();
   const zoneId = await cf.resolveZoneId(domain);
@@ -161,6 +176,28 @@ export async function onboardSendingDomain(
         code: CF_WORKERS_PAID_REQUIRED_CODE,
         domain,
         error: body.error,
+      };
+    }
+    // Detect permission errors (code 10000) from the Email Sending API.
+    // Run the probe inline so the desktop can show exactly which row failed.
+    if (isCloudflareTokenPermissionError(message) && opts.cfApiToken) {
+      let cfApiTokenPermissions = null;
+      try {
+        const probe = await probeCfApiTokenPermissions(
+          opts.cfApiToken,
+          { knownDomains: opts.knownDomains ?? [] },
+        );
+        cfApiTokenPermissions = probe.permissions;
+      } catch {
+        // ignore probe failure — still return the error code
+      }
+      return {
+        ok: false,
+        code: "cf_token_permission_missing",
+        domain,
+        error:
+          "Cloudflare API token lacks Email Sending permission. Add Account → Email Sending → Edit to your token.",
+        cfApiTokenPermissions,
       };
     }
     throw error;

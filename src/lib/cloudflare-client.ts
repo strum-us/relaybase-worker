@@ -448,7 +448,9 @@ export class CloudflareClient {
       params.set("per_page", "100");
       params.set("page", String(page));
       const path = `/zones/${zoneId}/dns_records?${params.toString()}`;
-      const { res, data } = await this.requestOnce<CfDnsRecord[]>(path);
+      const { res, data } = await this.requestOnce<CfDnsRecord[]>(path, {
+        method: "GET",
+      });
       if (!res.ok || !data.success) {
         throw this.formatCfError(res, data, path, "GET");
       }

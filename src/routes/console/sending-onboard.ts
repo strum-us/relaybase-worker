@@ -4,9 +4,13 @@ import { requireConsoleSession } from "../../lib/auth";
 import {
   cloudflareSendErrorBody,
   isCloudflarePlanError,
+  isCloudflareTokenPermissionError,
 } from "../../lib/cloudflare-api-hints";
 import { createCloudflareClient } from "../../lib/cloudflare-config";
 import { onboardSendingDomain } from "../../lib/sending-onboard";
+import { createAppDb } from "../../../db/app";
+import { readMailbox } from "../../lib/catalog-store";
+import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
 
 const consoleSendingOnboard = new Hono<{ Bindings: Env }>();
 
@@ -50,9 +54,19 @@ consoleSendingOnboard.post("/", async (c) => {
   }
 
   try {
+    // Read known domains for the permission probe fallback.
+    let knownDomains: string[] = [];
+    try {
+      const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+      knownDomains = mailbox.domains;
+    } catch {
+      // ignore
+    }
     const result = await onboardSendingDomain(cf, domain, {
       confirmReplace,
       accountId: bodyAccountId || cf.accountId || c.env.CF_ACCOUNT_ID,
+      cfApiToken: c.env.CF_API_TOKEN,
+      knownDomains,
     });
     if (result.ok) {
       return c.json({ domain: result.domain });
@@ -85,6 +99,17 @@ consoleSendingOnboard.post("/", async (c) => {
         403,
       );
     }
+    if (result.code === "cf_token_permission_missing") {
+      return c.json(
+        {
+          error: result.error,
+          code: result.code,
+          domain: result.domain,
+          cfApiTokenPermissions: result.cfApiTokenPermissions,
+        },
+        502,
+      );
+    }
     return c.json(
       {
         error: result.error,
@@ -106,6 +131,36 @@ consoleSendingOnboard.post("/", async (c) => {
           domain,
         },
         403,
+      );
+    }
+    // Last-resort: detect permission errors thrown outside onboardSendingDomain.
+    if (isCloudflareTokenPermissionError(message) && c.env.CF_API_TOKEN) {
+      let cfApiTokenPermissions = null;
+      try {
+        let knownDomains: string[] = [];
+        try {
+          const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+          knownDomains = mailbox.domains;
+        } catch {
+          // ignore
+        }
+        const probe = await probeCfApiTokenPermissions(
+          c.env.CF_API_TOKEN,
+          { knownDomains },
+        );
+        cfApiTokenPermissions = probe.permissions;
+      } catch {
+        // ignore
+      }
+      return c.json(
+        {
+          error:
+            "Cloudflare API token lacks a required permission. Check the permission rows below.",
+          code: "cf_token_permission_missing",
+          domain,
+          cfApiTokenPermissions,
+        },
+        502,
       );
     }
     return c.json({ error: message }, 502);
