@@ -18,6 +18,7 @@ import {
   type SendingHealthDomain,
 } from "./sending-health";
 import { probeCfApiTokenPermissions } from "./cloudflare-probe";
+import { resolveZoneForDomain } from "./zone-resolution";
 
 export { isSendingOwnedDnsRecord } from "./sending-onboard-dns";
 
@@ -128,7 +129,12 @@ export async function onboardSendingDomain(
   } = {},
 ): Promise<SendingOnboardResult> {
   const domain = domainInput.trim().toLowerCase();
-  const zoneId = await cf.resolveZoneId(domain);
+  // Try exact zone match first, then walk up to parent zone for subdomains.
+  let zoneId = await cf.resolveZoneId(domain);
+  if (!zoneId) {
+    const resolution = await resolveZoneForDomain(cf, domain);
+    zoneId = resolution?.zoneId ?? null;
+  }
   if (!zoneId) {
     return { ok: false, code: "no_zone", domain, error: NO_ZONE_ERROR };
   }

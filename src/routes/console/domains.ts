@@ -20,6 +20,7 @@ import {
   createMxConflictErrorPayload,
   createMxConflictOnboarding,
 } from "../../lib/domain-onboarding";
+import { resolveZoneForDomain } from "../../lib/zone-resolution";
 
 const consoleDomains = new Hono<{ Bindings: Env }>();
 
@@ -85,6 +86,30 @@ consoleDomains.post("/", async (c) => {
     zoneId = await cf.resolveZoneId(domain);
   } catch {
     // ignore if CF_API_TOKEN is not configured or resolve fails
+  }
+
+  // Subdomain candidate detection: if exact zone resolution failed, try
+  // parent-zone walk-up. If a parent zone exists, return a subdomain_candidate
+  // response so the client can open the SubdomainOnboardDialog instead of
+  // adding the domain to D1 with no zone.
+  if (cf && !zoneId) {
+    try {
+      const resolution = await resolveZoneForDomain(cf, domain);
+      if (resolution && resolution.isSubdomain) {
+        return c.json(
+          {
+            error: `${domain} is a subdomain of ${resolution.zoneName}. Onboard it as a subdomain to enable Sending and Routing without conflicting with the parent domain's mail provider.`,
+            code: "subdomain_candidate",
+            domain,
+            parentZone: resolution.zoneName,
+            parentZoneId: resolution.zoneId,
+          },
+          400,
+        );
+      }
+    } catch {
+      // ignore parent-zone resolution failure — fall through to normal add
+    }
   }
 
   if (cf && zoneId) {
