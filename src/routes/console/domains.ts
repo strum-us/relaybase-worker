@@ -5,8 +5,12 @@ import { createCloudflareClient } from "../../lib/cloudflare-config";
 import { createAppDb } from "../../../db/app";
 import {
   clearConflictingMxRecords,
+  ensureInboundRouting,
   findConflictingMxRecords,
+  listInboundRoutingForDomains,
   MxConflictError,
+  reenableDisabledWorkerRules,
+  type InboundRoutingResult,
   type MxConflictRecord,
 } from "../../lib/inbound-routing";
 import {
@@ -184,6 +188,78 @@ consoleDomains.delete("/", async (c) => {
     domains: listDomainSummaries(data),
     message: "Domain removed",
   });
+});
+
+// GET /console/domains/routing[?domain=] — Email Routing enablement + rule
+// status per domain, so the dashboard can flag rules Cloudflare left
+// `enabled: false` after a Worker script upload.
+consoleDomains.get("/routing", async (c) => {
+  const denied = await requireConsoleSession(c);
+  if (denied) return denied;
+
+  const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+  const requested = c.req.query("domain")?.trim().toLowerCase();
+  const domains = requested
+    ? [requested]
+    : mailbox.domains.map((domain) => domain.trim().toLowerCase()).filter(Boolean);
+
+  try {
+    const cf = await createCloudflareClient(c.env);
+    const results = await listInboundRoutingForDomains(cf, domains);
+    return c.json({ domains: results });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to list routing";
+    return c.json({ error: message }, 502);
+  }
+});
+
+// POST /console/domains/routing/repair {domain} — turns any Email Routing
+// rule Cloudflare left `enabled: false` back on (the post-upload bug, even
+// for a rule whose address is no longer registered), then also re-applies a
+// literal-To rule for every currently-registered address (covers an address
+// that never got a rule in the first place).
+consoleDomains.post("/routing/repair", async (c) => {
+  const denied = await requireConsoleSession(c);
+  if (denied) return denied;
+
+  let body: { domain?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+  const domain = normalizeDomain(body.domain ?? "");
+  if (!domain) {
+    return c.json({ error: "domain is required" }, 400);
+  }
+
+  try {
+    const cf = await createCloudflareClient(c.env);
+    const reenabled = await reenableDisabledWorkerRules(cf, domain);
+
+    const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+    const entries = mailbox.addresses
+      .filter((address) => address.domain === domain)
+      .map((address) => ({
+        address: address.email,
+        inboundEnabled: address.inboundEnabled !== false,
+      }));
+    const result: InboundRoutingResult | null = entries.length
+      ? await ensureInboundRouting(cf, domain, entries, c.env.WORKER_SCRIPT_NAME)
+      : null;
+
+    return c.json({
+      domain,
+      zoneId: reenabled.zoneId,
+      reenabledOrphanedRules: reenabled.reenabled,
+      rules: result?.rules ?? [],
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to repair routing";
+    return c.json({ error: message }, 502);
+  }
 });
 
 export { consoleDomains };
