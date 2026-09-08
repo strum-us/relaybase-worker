@@ -2,14 +2,13 @@
 
 Customer-facing Worker installs ship as **pre-built JS bundles** (not TypeScript source).
 
-Desktop and Worker share **one product semver** — always bump both together.
-First public release: **0.1.1**. Policy: sibling repo
-[`relaybase/docs/version-sync.md`](../../relaybase/docs/version-sync.md).
+**Start with the full checklist:** sibling repo [main/docs/release/workflow.md](../main/docs/release/workflow.md).
 
-**CRITICAL (Pre-launch):** Version is frozen at **`0.1.1`**. Do **NOT** bump versions for pre-launch bug fixes or repackaging. After official launch, later updates bump the **patch** only (`0.1.2`, `0.1.3`, …). There is no separate
-dev / `+local` channel. Desktop install/update uploads **only** this hosted ZIP.
+Version pairing policy: [main/docs/release/version-sync.md](../main/docs/release/version-sync.md).
 
-Desktop releases: [`relaybase/desktop/docs/release.md`](../../relaybase/desktop/docs/release.md).
+Desktop releases: [main/desktop/docs/release.md](../main/desktop/docs/release.md).
+
+Patch-only channel after **0.1.1** (`0.1.2`, `0.1.3`, …). No separate dev / `+local` channel.
 
 ---
 
@@ -19,16 +18,17 @@ Every Worker release uses a dedicated branch. Do **not** bump versions or
 commit download artifacts straight on `main`.
 
 ```text
-release-worker-<semver>    # e.g. release-worker-0.1.1
+release-worker-<semver>    # e.g. release-worker-0.1.3
 ```
 
 1. `git checkout main && git pull`
 2. `git checkout -b release-worker-X.Y.Z`
-3. All release work on that branch
-4. Push branch
-5. Merge into `main`, push `main`
-6. Tag `vX.Y.Z` and publish a GitHub Release (`pnpm run publish:github`)
-7. Keep `release-worker-X.Y.Z` on the remote
+3. All release work on that branch (version, notes, README links)
+4. Push branch → PR → merge into `main`
+5. **`pnpm run publish:github`** — creates tag `vX.Y.Z` and GitHub Release assets
+6. Keep `release-worker-X.Y.Z` on the remote
+
+**Do not stop after `pack:customer-install`.** The desktop app reads the GitHub Release manifest. Without `publish:github`, Settings → Worker version stays on the previous release.
 
 ---
 
@@ -36,7 +36,9 @@ release-worker-<semver>    # e.g. release-worker-0.1.1
 
 ### 1. Version bump
 
-Set the version in [`package.json`](../package.json) **and** bump Desktop in the sibling `relaybase` repo to the same semver — see [`relaybase/docs/version-sync.md`](../../relaybase/docs/version-sync.md).
+Set the version in [`package.json`](../package.json) and `wrangler.toml` → `WORKER_VERSION`.
+
+When desktop also ships, bump desktop in sibling `main/` and note pairing in desktop release notes.
 
 ### 2. Release notes (required)
 
@@ -58,18 +60,7 @@ date: YYYY-MM-DD
 
 `pack-customer-install.mjs` **fails** if this file is missing.
 
-### 3. Pack
-
-```bash
-pnpm run pack:customer-install
-```
-
-Pack runs `build:bundle` and writes versioned artifacts. Manifest `zipUrl` /
-`workerJsUrl` point at GitHub Releases
-(`https://github.com/strum-us/relaybase-worker/releases/download/vX.Y.Z/…`).
-Override the output directory with `RELAYBASE_DOWNLOADS_DIR`.
-
-### 4. Publish GitHub Release
+### 3. Publish GitHub Release
 
 From this repo (requires `gh` auth):
 
@@ -77,7 +68,7 @@ From this repo (requires `gh` auth):
 pnpm run publish:github
 ```
 
-This creates tag `vX.Y.Z` (if needed) and uploads:
+This runs `pack:customer-install`, then creates/updates release `vX.Y.Z` with:
 
 - `worker.X.Y.Z.js`
 - `relaybase-worker-install-X.Y.Z.zip`
@@ -86,10 +77,18 @@ This creates tag `vX.Y.Z` (if needed) and uploads:
 
 Pushing a `v*` tag also runs `.github/workflows/release.yml`.
 
-### 5. Verify
+Local pack only (no GitHub):
 
 ```bash
-curl -sL https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json
+pnpm run pack:customer-install
+```
+
+Output under `dist/` (gitignored). Use for smoke tests, not customer delivery.
+
+### 4. Verify
+
+```bash
+curl -sL https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json | jq .version
 curl -sI https://github.com/strum-us/relaybase-worker/releases/download/vX.Y.Z/worker.X.Y.Z.js | grep -i HTTP
 ```
 
@@ -118,9 +117,9 @@ Public URLs (after publish):
 
 ## Desktop behavior
 
-- **Fresh install:** downloads latest ZIP from manifest → deploy → stores `workerVersion` in `~/.relaybase/workspace.json`.
-- **Startup banner:** compares stored version to manifest; prompts update.
-- **Settings → Cloudflare:** manual check + “Update Worker” re-deploy.
+- **Fresh install:** downloads latest ZIP from manifest → deploy → stores `workerVersion` in workspace config.
+- **Settings → Worker version:** compares installed version to GitHub manifest; **Update Worker** redeploys.
+- Update offered only when manifest version **>** installed Worker and **≤** desktop app version.
 
 ## Local overrides
 
