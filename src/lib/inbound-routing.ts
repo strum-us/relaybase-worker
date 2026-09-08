@@ -1,4 +1,4 @@
-import { CloudflareClient } from "./cloudflare-client";
+import { CloudflareClient } from "./cloudflare-client.ts";
 import {
   isApexMxOwnerName,
   isCloudflareMxContent,
@@ -75,6 +75,34 @@ export async function listInboundRouting(
   };
 }
 
+export type InboundRoutingStatus =
+  | ListedInboundRouting
+  | { domain: string; error: string };
+
+/**
+ * Read-only snapshot for several zones at once. Per-domain failures (e.g. a
+ * domain not yet on this Cloudflare account) are captured as `{domain,
+ * error}` entries instead of rejecting the whole call.
+ */
+export async function listInboundRoutingForDomains(
+  cf: CloudflareClient,
+  domains: string[],
+): Promise<InboundRoutingStatus[]> {
+  return Promise.all(
+    domains.map(async (domain): Promise<InboundRoutingStatus> => {
+      try {
+        return await listInboundRouting(cf, domain);
+      } catch (error) {
+        return {
+          domain,
+          error:
+            error instanceof Error ? error.message : "Failed to list routing",
+        };
+      }
+    }),
+  );
+}
+
 type CfEmailRoutingRule = {
   id: string;
   enabled: boolean;
@@ -93,6 +121,57 @@ async function resolveZoneId(
     );
   }
   return zoneId;
+}
+
+export type ReenabledInboundRule = {
+  ruleId: string;
+  address: string | null;
+};
+
+export type ReenableDisabledRoutingResult = {
+  domain: string;
+  zoneId: string;
+  reenabled: ReenabledInboundRule[];
+};
+
+/**
+ * Re-enable every Email Routing rule whose action is `worker` but that
+ * Cloudflare left `enabled: false` (the post-script-upload bug), regardless
+ * of whether the rule's address is still a registered mailbox address.
+ *
+ * This is the direct fix for the root cause — `ensureInboundRouting`'s
+ * address-driven repair only touches rules for currently-registered
+ * addresses and misses an orphaned rule left over from an address that was
+ * later renamed or removed, even though that rule is still live in
+ * Cloudflare and still bouncing mail.
+ */
+export async function reenableDisabledWorkerRules(
+  cf: CloudflareClient,
+  domain: string,
+): Promise<ReenableDisabledRoutingResult> {
+  const zoneId = await resolveZoneId(cf, domain);
+  const existing = await cf.listEmailRoutingRules(zoneId);
+  const reenabled: ReenabledInboundRule[] = [];
+
+  for (const rule of existing) {
+    if (rule.enabled) continue;
+    if (!rule.actions.some((action) => action.type === "worker")) continue;
+
+    await cf.updateEmailRoutingRule(zoneId, rule.id, {
+      enabled: true,
+      actions: rule.actions,
+      matchers: rule.matchers,
+    });
+    const literal = rule.matchers.find(
+      (matcher) => matcher.type === "literal" && matcher.field === "to",
+    );
+    reenabled.push({
+      ruleId: rule.id,
+      address: literal?.value?.trim().toLowerCase() ?? null,
+    });
+  }
+
+  return { domain, zoneId, reenabled };
 }
 
 function matchesAddress(

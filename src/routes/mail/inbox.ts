@@ -6,7 +6,7 @@ import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
 import {
   ensureInboundRouting,
-  listInboundRouting,
+  listInboundRoutingForDomains,
   removeInboundWorkerRouting,
   type InboundRoutingResult,
   type RemoveInboundRoutingResult,
@@ -305,19 +305,7 @@ mailInbox.get("/routing", async (c) => {
 
   try {
     const cf = await createCloudflareClient(c.env);
-    const results = await Promise.all(
-      domains.map(async (domain) => {
-        try {
-          return await listInboundRouting(cf, domain);
-        } catch (error) {
-          return {
-            domain,
-            error:
-              error instanceof Error ? error.message : "Failed to list routing",
-          };
-        }
-      }),
-    );
+    const results = await listInboundRoutingForDomains(cf, domains);
     return c.json({ domains: results });
   } catch (error) {
     const message =
