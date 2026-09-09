@@ -62,7 +62,18 @@ async function sendViaBinding(
   if (html) payload.html = html;
   const replyTo = params.replyTo?.trim();
   if (replyTo) payload.replyTo = replyTo;
-  if (params.attachments?.length) payload.attachments = params.attachments;
+  // The binding takes attachment `content` as raw binary (ArrayBuffer), unlike
+  // the REST JSON endpoint which needs it pre-base64-encoded as a string —
+  // passing a base64 string here made Cloudflare treat it as literal text and
+  // re-encode it, landing a double-base64-encoded attachment at the recipient.
+  if (params.rawAttachments?.length) {
+    payload.attachments = params.rawAttachments.map((item) => ({
+      filename: item.filename,
+      content: item.content,
+      type: item.contentType,
+      disposition: "attachment" as const,
+    }));
+  }
   if (Object.keys(headers).length) payload.headers = headers;
 
   const result = await email.send(payload);

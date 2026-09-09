@@ -4,7 +4,7 @@ import { sendOutboundEmail } from "../email-send";
 import { recordOpsLog } from "../ops-logs";
 import { recordSendLog } from "../send-logs";
 import { createMailDb } from "../../../db/mail";
-import { storeSentMail } from "../mailbox-store";
+import { storeSentMail, type ThinMailMeta } from "../mailbox-store";
 import { buildMimeMessage } from "../mime";
 import {
   assertSendMessageSize,
@@ -44,6 +44,25 @@ export type SendMailSource = "compose" | "api" | "mobile";
 export type SendMailOptions = {
   waitUntil?: LocalDeliverWaitUntil;
 };
+
+/** Maps the record persisted by `storeSentMail` to the `SentEmail` shape the frontend expects (same fields `GET /mail/sent` returns via `rowToSentItem`). */
+function thinMailMetaToSentEmail(record: ThinMailMeta) {
+  return {
+    id: record.id,
+    from: record.fromEmail,
+    fromName: record.fromName ?? null,
+    to: record.toEmails?.join(", ") || record.toEmail,
+    cc: record.ccEmails?.join(", ") || "",
+    subject: record.subject,
+    bodyPreview: record.bodyPreview,
+    sentAt: record.occurredAt,
+    messageId: record.messageId,
+    inReplyTo: record.inReplyTo,
+    references: record.references,
+    size: record.size,
+    attachmentCount: record.attachments.length,
+  };
+}
 
 async function persistSendLog(
   env: Env,
@@ -309,9 +328,10 @@ export async function sendMailMessage(
       })),
     });
 
+    let sentRecord: ThinMailMeta | undefined;
     if (domain) {
       try {
-        await storeSentMail(
+        const stored = await storeSentMail(
           env.INBOUND,
           {
             from,
@@ -329,6 +349,7 @@ export async function sendMailMessage(
           },
           createMailDb(env.RELAYBASE_MAIL),
         );
+        sentRecord = stored.record;
       } catch (error) {
         console.error("Failed to persist sent mail", error);
       }
@@ -349,7 +370,10 @@ export async function sendMailMessage(
 
     return {
       response: new Response(
-        JSON.stringify({ messageId: result.messageId }),
+        JSON.stringify({
+          messageId: result.messageId,
+          ...(sentRecord ? { sent: thinMailMetaToSentEmail(sentRecord) } : {}),
+        }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
     };
