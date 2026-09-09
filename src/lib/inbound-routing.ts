@@ -36,6 +36,16 @@ export type ListedInboundRouting = {
   zoneId: string;
   routingEnabled: boolean;
   rules: ListedInboundRoutingRule[];
+  /**
+   * Registered addresses (passed in by the caller from D1) with no matching
+   * literal-To rule in Cloudflare at all — distinct from a rule that exists
+   * but is `enabled: false`. Mail to these addresses is silently dropped
+   * (never reaches the Worker, never bounces visibly) because Relaybase's own
+   * catalog and Cloudflare's live routing rules have drifted apart, e.g. an
+   * address written straight to D1 (`PUT /console/mailbox`) without ever
+   * calling `ensureInboundRouting`.
+   */
+  missingAddresses: string[];
 };
 
 function describeRule(rule: CfEmailRoutingRule): ListedInboundRoutingRule {
@@ -57,21 +67,39 @@ function describeRule(rule: CfEmailRoutingRule): ListedInboundRoutingRule {
   };
 }
 
-/** Read-only snapshot of Email Routing enablement + rules for one zone. */
+/**
+ * Read-only snapshot of Email Routing enablement + rules for one zone.
+ * `registeredAddresses` (Relaybase's own D1 catalog for this domain) is
+ * diffed against the live Cloudflare rules to surface addresses with no
+ * rule at all, not just rules Cloudflare left disabled.
+ */
 export async function listInboundRouting(
   cf: CloudflareClient,
   domain: string,
+  registeredAddresses: string[] = [],
 ): Promise<ListedInboundRouting> {
   const zoneId = await resolveZoneId(cf, domain);
   const [routing, existing] = await Promise.all([
     cf.getEmailRoutingSettings(zoneId),
     cf.listEmailRoutingRules(zoneId),
   ]);
+  const rules = existing.map(describeRule);
+  const ruledAddresses = new Set(
+    rules.map((rule) => rule.address).filter((a): a is string => Boolean(a)),
+  );
+  const missingAddresses = [
+    ...new Set(
+      registeredAddresses
+        .map((address) => address.trim().toLowerCase())
+        .filter((address) => address && !ruledAddresses.has(address)),
+    ),
+  ];
   return {
     domain,
     zoneId,
     routingEnabled: routing.enabled,
-    rules: existing.map(describeRule),
+    rules,
+    missingAddresses,
   };
 }
 
@@ -87,11 +115,16 @@ export type InboundRoutingStatus =
 export async function listInboundRoutingForDomains(
   cf: CloudflareClient,
   domains: string[],
+  registeredAddressesByDomain: Record<string, string[]> = {},
 ): Promise<InboundRoutingStatus[]> {
   return Promise.all(
     domains.map(async (domain): Promise<InboundRoutingStatus> => {
       try {
-        return await listInboundRouting(cf, domain);
+        return await listInboundRouting(
+          cf,
+          domain,
+          registeredAddressesByDomain[domain] ?? [],
+        );
       } catch (error) {
         return {
           domain,

@@ -74,6 +74,46 @@ describe("listInboundRoutingForDomains", () => {
     }
   });
 
+  it("flags a registered address with no Cloudflare rule at all as missing, distinct from a disabled rule", async () => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/zones?")) {
+        return jsonOk([
+          { id: "z-drift", name: "drift.xyz", account: { id: ACCOUNT_A } },
+        ]);
+      }
+      if (url.includes("/email/routing/rules")) {
+        return jsonOk([
+          {
+            id: "rule-1",
+            enabled: true,
+            matchers: [{ type: "literal", field: "to", value: "jon@drift.xyz" }],
+            actions: [{ type: "worker", value: ["relaybase-worker"] }],
+          },
+        ]);
+      }
+      if (url.includes("/email/routing")) {
+        return jsonOk({ enabled: true });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    }) as typeof fetch;
+
+    try {
+      const cf = new CloudflareClient({ accountId: ACCOUNT_A, apiToken: "tok" });
+      const results = await listInboundRoutingForDomains(cf, ["drift.xyz"], {
+        "drift.xyz": ["jon@drift.xyz", "hello@drift.xyz", "HELLO@drift.xyz"],
+      });
+      const drift = results.find((r) => r.domain === "drift.xyz");
+      assert.ok(drift && !("error" in drift));
+      if (drift && "missingAddresses" in drift) {
+        assert.deepEqual(drift.missingAddresses, ["hello@drift.xyz"]);
+      }
+    } finally {
+      globalThis.fetch = previous;
+    }
+  });
+
   it("captures a per-domain error instead of failing the whole batch", async () => {
     const previous = globalThis.fetch;
     globalThis.fetch = (async (input: RequestInfo | URL) => {

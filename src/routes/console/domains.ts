@@ -203,9 +203,20 @@ consoleDomains.get("/routing", async (c) => {
     ? [requested]
     : mailbox.domains.map((domain) => domain.trim().toLowerCase()).filter(Boolean);
 
+  const registeredAddressesByDomain: Record<string, string[]> = {};
+  for (const domain of domains) {
+    registeredAddressesByDomain[domain] = mailbox.addresses
+      .filter((address) => address.domain === domain)
+      .map((address) => address.email);
+  }
+
   try {
     const cf = await createCloudflareClient(c.env);
-    const results = await listInboundRoutingForDomains(cf, domains);
+    const results = await listInboundRoutingForDomains(
+      cf,
+      domains,
+      registeredAddressesByDomain,
+    );
     return c.json({ domains: results });
   } catch (error) {
     const message =
