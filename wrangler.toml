@@ -8,7 +8,7 @@ compatibility_date = "2025-06-01"
 [vars]
 WORKER_SCRIPT_NAME = "relaybase-api"
 INBOUND_BUCKET_NAME = "relaybase-mailbox"
-WORKER_VERSION = "0.1.3"
+WORKER_VERSION = "0.1.4"
 
 [triggers]
 crons = ["*/15 * * * *"]
