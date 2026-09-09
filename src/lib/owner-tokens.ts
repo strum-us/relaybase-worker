@@ -87,7 +87,7 @@ export type AccessPayload = {
 export const MAIL_ACCESS_TTL_SECONDS = 60 * 60; // 60 minutes
 export const CONSOLE_ACCESS_TTL_SECONDS = 30 * 60; // 30 minutes
 export const MAIL_REFRESH_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
-export const CONSOLE_REFRESH_TTL_SECONDS = 30 * 60; // 30 minutes
+export const CONSOLE_REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 /** @deprecated Use scope-specific TTL constants. */
 export const ACCESS_TTL_SECONDS = CONSOLE_ACCESS_TTL_SECONDS;
