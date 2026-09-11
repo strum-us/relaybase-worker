@@ -138,6 +138,7 @@ Connect the [Relaybase desktop app](https://relaybase.xyz): paste your Worker UR
 | `WORKER_SCRIPT_NAME` | Worker script name (default `relaybase-api`) |
 | `INBOUND_BUCKET_NAME` | R2 bucket label |
 | `WORKER_VERSION` | Reported in `/health` |
+| `DESKTOP_VERSION` | Desktop app version this Worker build is compatible with; reported in `/health` as `desktopVersion`. Gates mailbox-mode (invited/team) desktop auto-updates so a team member's app never self-updates past what the connected Worker supports. |
 
 ## API examples
 
