@@ -219,6 +219,60 @@ export const ownerSessions = sqliteTable(
   (t) => [index("owner_sessions_family_idx").on(t.family)],
 );
 
+// ─── account state (per-identity settings/UI/draft state, opaque JSON) ────
+// Replaces `~/.relaybase/{scopeId}/{email.json, mail/desktop/ui/*.json,
+// mail/desktop/drafts.json, ...}` so desktop and web read/write the same
+// durable state through the Worker instead of the local filesystem.
+// `identityKey` is "owner" or "team:{email}" (see worker/src/lib/account-identity.ts).
+
+export const accountState = sqliteTable(
+  "account_state",
+  {
+    id: text("id").primaryKey(), // `${identityKey}:${namespace}:${key}`
+    identityKey: text("identity_key").notNull(),
+    namespace: text("namespace").notNull(),
+    key: text("key").notNull(),
+    valueJson: text("value_json").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("account_state_identity_ns_key_idx").on(
+      t.identityKey,
+      t.namespace,
+      t.key,
+    ),
+    index("account_state_identity_idx").on(t.identityKey),
+  ],
+);
+
+// ─── draft attachments (metadata only — bytes live in R2 under drafts/) ───
+
+export const draftAttachments = sqliteTable(
+  "draft_attachments",
+  {
+    id: text("id").primaryKey(),
+    identityKey: text("identity_key").notNull(),
+    draftId: text("draft_id").notNull(),
+    attachmentId: text("attachment_id").notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type"),
+    size: integer("size").notNull(),
+    r2Key: text("r2_key").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("draft_attachments_identity_draft_attach_idx").on(
+      t.identityKey,
+      t.draftId,
+      t.attachmentId,
+    ),
+    index("draft_attachments_identity_draft_idx").on(
+      t.identityKey,
+      t.draftId,
+    ),
+  ],
+);
+
 // ─── inbound events (KV TTL queue replacement) ───────────────────────────
 
 export const inboundEvents = sqliteTable(
@@ -254,3 +308,5 @@ export type OwnerConfigRow = typeof ownerConfig.$inferSelect;
 export type OwnerSessionRow = typeof ownerSessions.$inferSelect;
 export type AppSettingsRow = typeof appSettings.$inferSelect;
 export type InboundEventRow = typeof inboundEvents.$inferSelect;
+export type AccountStateRow = typeof accountState.$inferSelect;
+export type DraftAttachmentRow = typeof draftAttachments.$inferSelect;

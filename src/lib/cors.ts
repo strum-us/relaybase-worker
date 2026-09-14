@@ -10,7 +10,9 @@ function isAllowedOrigin(origin: string): boolean {
   if (!origin) return false;
   if (
     origin === "https://relaybase.xyz" ||
-    origin === "https://www.relaybase.xyz"
+    origin === "https://www.relaybase.xyz" ||
+    origin === "https://relaybase.email" ||
+    origin === "https://www.relaybase.email"
   ) {
     return true;
   }
@@ -28,6 +30,10 @@ function isAllowedOrigin(origin: string): boolean {
       return true;
     }
     if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+      return true;
+    }
+    // HQ-hosted team web mail (OpenNext on Workers) and other *.workers.dev previews.
+    if (u.hostname === "workers.dev" || u.hostname.endsWith(".workers.dev")) {
       return true;
     }
   } catch {
@@ -50,7 +56,7 @@ function applyCorsHeaders(
   );
   c.header(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, Accept",
+    "Authorization, Content-Type, Accept, X-Account-Email, X-Relaybase-Retried",
   );
   c.header("Access-Control-Max-Age", "86400");
 }

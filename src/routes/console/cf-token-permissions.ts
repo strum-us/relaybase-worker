@@ -4,6 +4,7 @@ import { requireConsoleSession } from "../../lib/auth";
 import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
 import { createAppDb } from "../../../db/app";
 import { readMailbox } from "../../lib/catalog-store";
+import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
 
 const consoleCfTokenPermissions = new Hono<{ Bindings: Env }>();
 
@@ -31,7 +32,11 @@ consoleCfTokenPermissions.get("/", async (c) => {
     // ignore
   }
 
-  const probe = await probeCfApiTokenPermissions(apiToken, { knownDomains });
+  const pinnedAccountId = await pinnedCfAccountId(c.env);
+  const probe = await probeCfApiTokenPermissions(apiToken, {
+    knownDomains,
+    pinnedAccountId,
+  });
   return c.json({
     ok: true,
     cfApiTokenSet: true,

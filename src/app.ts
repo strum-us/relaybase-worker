@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import type { Env } from "./env";
 import { desktopCors } from "./lib/cors";
 import { probeD1Connection } from "./lib/d1-status";
+import { consoleBroadcastDrafts } from "./routes/console/broadcast-drafts";
+import { mailAccountState } from "./routes/mail/account-state";
 import { consoleAudienceGroups } from "./routes/console/audience-groups";
 import { consoleOpsLogs } from "./routes/console/ops-logs";
 import { consoleOwnerAuth } from "./routes/console/owner-auth";
@@ -105,6 +107,7 @@ app.route("/console/stats", consoleStats);
 app.route("/console/rebuild-mail", consoleRebuildMail);
 app.route("/console/mailbox-health", consoleMailboxHealth);
 app.route("/console/settings", consoleSettings);
+app.route("/console/broadcast-drafts", consoleBroadcastDrafts);
 
 // End-user mail operations (owner-session auth).
 app.route("/mail/addresses", mailAddresses);
@@ -113,6 +116,7 @@ app.route("/mail/inbox", mailInbox);
 app.route("/mail/send", mailSend);
 app.route("/mail/sent", mailSent);
 app.route("/mail/favicon", mailFavicon);
+app.route("/mail/account-state", mailAccountState);
 
 // Flutter mobile app (mobile-password auth). Peer to /v1/*.
 app.route("/mobile", mobile);

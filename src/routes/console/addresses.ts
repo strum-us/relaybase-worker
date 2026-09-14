@@ -13,6 +13,7 @@ import {
   isCloudflareTokenPermissionError,
 } from "../../lib/cloudflare-api-hints";
 import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
+import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
 import {
   normalizeDomain,
   readMailbox,
@@ -175,9 +176,10 @@ consoleAddresses.post("/", async (c) => {
     if (isPermError) {
       try {
         const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+        const pinnedAccountId = await pinnedCfAccountId(c.env);
         const probe = await probeCfApiTokenPermissions(
           c.env.CF_API_TOKEN ?? "",
-          { knownDomains: mailbox.domains },
+          { knownDomains: mailbox.domains, pinnedAccountId },
         );
         cfApiTokenPermissions = probe.permissions;
       } catch {

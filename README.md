@@ -12,8 +12,8 @@ This repository is the open-source routing Worker. The Relaybase desktop app is 
 |--|-----|
 | Latest release | https://github.com/strum-us/relaybase-worker/releases/latest |
 | Manifest | https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json |
-| Worker JS (0.1.5) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.5/worker.0.1.5.js |
-| Install ZIP (0.1.5) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.5/relaybase-worker-install-0.1.5.zip |
+| Worker JS (0.1.6) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.6/worker.0.1.6.js |
+| Install ZIP (0.1.6) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.6/relaybase-worker-install-0.1.6.zip |
 
 How to cut a release: [docs/RELEASE.md](./docs/RELEASE.md).
 
