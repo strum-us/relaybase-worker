@@ -52,6 +52,22 @@ if (!version || version === "0.0.0") {
   process.exit(1);
 }
 
+/**
+ * Read a quoted `[vars]` value (e.g. `DESKTOP_VERSION`) out of the repo's
+ * hand-maintained `wrangler.toml`. Unlike `WORKER_VERSION`, the desktop
+ * version has no `package.json` field to source from, so the packed install
+ * ZIP mirrors whatever the repo's `wrangler.toml` declares. Returns the
+ * empty string when the var is absent (packed Worker then reports
+ * `desktopVersion: "unknown"` — fail-open, never worse than no gating).
+ */
+function readWranglerVar(name) {
+  const raw = readFileSync(join(serverRoot, "wrangler.toml"), "utf8");
+  const re = new RegExp(`^\\s*${name}\\s*=\\s*"([^"]+)"`, "m");
+  const match = raw.match(re);
+  return match ? match[1].trim() : "";
+}
+const desktopVersion = readWranglerVar("DESKTOP_VERSION");
+
 const notesPath = join(serverRoot, "release-notes", `${version}.md`);
 if (!existsSync(notesPath)) {
   console.error(
@@ -120,6 +136,7 @@ compatibility_date = "2025-06-01"
 WORKER_SCRIPT_NAME = "relaybase-api"
 INBOUND_BUCKET_NAME = "relaybase-mailbox"
 WORKER_VERSION = "${version}"
+DESKTOP_VERSION = "${desktopVersion}"
 
 [triggers]
 crons = ["*/15 * * * *"]

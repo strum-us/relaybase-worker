@@ -37,6 +37,9 @@ release-worker-<semver>    # e.g. release-worker-0.1.3
 ### 1. Version bump
 
 Set the version in [`package.json`](../package.json) and `wrangler.toml` → `WORKER_VERSION`.
+Also set `wrangler.toml` → `DESKTOP_VERSION` to the desktop app version this
+Worker build is compatible with (mirrors `WORKER_VERSION`'s upkeep; reported
+in `/health` as `desktopVersion` and read back by the pack script below).
 
 When desktop also ships, bump desktop in sibling `main/` and note pairing in desktop release notes.
 

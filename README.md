@@ -12,8 +12,8 @@ This repository is the open-source routing Worker. The Relaybase desktop app is 
 |--|-----|
 | Latest release | https://github.com/strum-us/relaybase-worker/releases/latest |
 | Manifest | https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json |
-| Worker JS (0.1.4) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.4/worker.0.1.4.js |
-| Install ZIP (0.1.4) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.4/relaybase-worker-install-0.1.4.zip |
+| Worker JS (0.1.5) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.5/worker.0.1.5.js |
+| Install ZIP (0.1.5) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.5/relaybase-worker-install-0.1.5.zip |
 
 How to cut a release: [docs/RELEASE.md](./docs/RELEASE.md).
 
@@ -138,6 +138,7 @@ Connect the [Relaybase desktop app](https://relaybase.xyz): paste your Worker UR
 | `WORKER_SCRIPT_NAME` | Worker script name (default `relaybase-api`) |
 | `INBOUND_BUCKET_NAME` | R2 bucket label |
 | `WORKER_VERSION` | Reported in `/health` |
+| `DESKTOP_VERSION` | Desktop app version this Worker build is compatible with; reported in `/health` as `desktopVersion`. Gates mailbox-mode (invited/team) desktop auto-updates so a team member's app never self-updates past what the connected Worker supports. |
 
 ## API examples
 
