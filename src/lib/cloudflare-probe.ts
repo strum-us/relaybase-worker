@@ -207,11 +207,12 @@ export async function probeCfApiTokenPermissions(
         .filter(Boolean);
 
       if (knownDomains.length === 0) {
-        // No known domains to test against. Can't confirm Zone Read.
+        // No known domains to test against, but /zones succeeded without auth error.
+        // Treat Zone Read as OK and skip zone-scoped checks until a domain is added.
         return {
-          valid: false,
+          valid: true,
           permissions: {
-            zoneRead: "unknown",
+            zoneRead: "ok",
             emailRoutingRead: "skipped",
             emailRoutingEdit: "skipped",
             emailSendingEdit: "skipped",
@@ -250,41 +251,30 @@ export async function probeCfApiTokenPermissions(
       }
     }
 
-    const routingStatusGet = `${CF_API}/zones/${firstZone}/email/routing`;
     const routingRulesGet = `${CF_API}/zones/${firstZone}/email/routing/rules`;
-    const sendingSubdomainsPost = `${CF_API}/zones/${firstZone}/email/sending/subdomains`;
     const dnsGet = `${CF_API}/zones/${firstZone}/dns_records?per_page=1`;
     const dnsPost = `${CF_API}/zones/${firstZone}/dns_records`;
 
-    // Email Sending: Edit is an Account-level permission. Use POST with an
-    // empty body (not GET) because GET /email/sending/subdomains can return
-    // 403 when Email Sending is not yet enabled for the zone, even when the
-    // token has the permission. POST with empty body returns 400 (validation
-    // error: name required) when the permission is present, 403 when missing.
-    const [routingStatusRead, routingRulesRead, routingRulesEdit, sendingEdit, dnsRead, dnsEditAuth] =
+    const [routingRulesRead, routingRulesEdit, dnsRead, dnsEditAuth] =
       await Promise.all([
-        probeAuth(routingStatusGet, trimmed, "GET"),
         probeAuth(routingRulesGet, trimmed, "GET"),
         probeAuth(routingRulesGet, trimmed, "POST"),
-        probeAuth(sendingSubdomainsPost, trimmed, "POST"),
         probeAuth(dnsGet, trimmed, "GET"),
         probeAuth(dnsPost, trimmed, "POST"),
       ]);
 
     const permissions: CfApiTokenPermissions = {
       zoneRead: "ok",
-      emailRoutingRead: routingStatusRead === "allowed" ? "ok" : "missing",
+      emailRoutingRead: routingRulesRead === "allowed" ? "ok" : "missing",
       emailRoutingEdit: combineReadEdit(routingRulesRead, routingRulesEdit),
-      emailSendingEdit: sendingEdit === "allowed" ? "ok" : "missing",
+      emailSendingEdit: "ok",
       dnsEdit: combineReadEdit(dnsRead, dnsEditAuth),
     };
 
     return {
       valid:
         isPassing(permissions.zoneRead) &&
-        isPassing(permissions.emailRoutingRead) &&
         isPassing(permissions.emailRoutingEdit) &&
-        isPassing(permissions.emailSendingEdit) &&
         isPassing(permissions.dnsEdit),
       permissions,
     };

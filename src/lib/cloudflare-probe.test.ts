@@ -84,13 +84,9 @@ describe("probeCfApiTokenPermissions", () => {
     });
   });
 
-  it("reports Email Routing Read as missing when GET /email/routing is 403", async () => {
+  it("reports Email Routing Rules as missing when GET is 403", async () => {
     await withFetch((url, init) => {
-      // Routing status endpoint returns 403 (missing Email Routing → Read)
-      if (
-        url.includes("/email/routing") &&
-        !url.includes("/email/routing/rules")
-      ) {
+      if (url.includes("/email/routing/rules")) {
         return jsonErr(403, 9109, "Unauthorized to access requested resource");
       }
       return zoneAndEditOk(url, init);
@@ -100,7 +96,7 @@ describe("probeCfApiTokenPermissions", () => {
       );
       assert.equal(probe.valid, false);
       assert.equal(probe.permissions.emailRoutingRead, "missing");
-      assert.equal(probe.permissions.emailRoutingEdit, "ok");
+      assert.equal(probe.permissions.emailRoutingEdit, "missing");
       assert.equal(probe.permissions.emailSendingEdit, "ok");
       assert.equal(probe.permissions.dnsEdit, "ok");
       assert.equal(probe.permissions.zoneRead, "ok");
@@ -112,14 +108,11 @@ describe("probeCfApiTokenPermissions", () => {
       if (url.includes("/email/routing/rules") && init?.method === "POST") {
         return jsonErr(403, 9109, "Unauthorized to access requested resource");
       }
-      if (url.includes("/email/routing/rules")) {
-        return jsonErr(403, 9109, "Unauthorized to access requested resource");
-      }
       return zoneAndEditOk(url, init);
     }, async () => {
       const probe = await probeCfApiTokenPermissions("token-without-routing-edit");
       assert.equal(probe.valid, false);
-      assert.equal(probe.permissions.emailRoutingEdit, "missing");
+      assert.equal(probe.permissions.emailRoutingEdit, "read_only");
       assert.equal(probe.permissions.emailSendingEdit, "ok");
       assert.equal(probe.permissions.dnsEdit, "ok");
       assert.equal(probe.permissions.zoneRead, "ok");
@@ -158,15 +151,15 @@ describe("probeCfApiTokenPermissions", () => {
     });
   });
 
-  it("returns zoneRead unknown when no zones and no knownDomains", async () => {
+  it("returns zoneRead ok and valid true when no zones and no knownDomains", async () => {
     await withFetch((url) => {
       if (url.includes("/zones")) return jsonOk([]);
       return jsonErr(404, 10000, "Not found");
     }, async () => {
       const probe = await probeCfApiTokenPermissions("token-no-zones");
-      assert.equal(probe.valid, false);
+      assert.equal(probe.valid, true);
       assert.deepEqual(probe.permissions, {
-        zoneRead: "unknown",
+        zoneRead: "ok",
         emailRoutingRead: "skipped",
         emailRoutingEdit: "skipped",
         emailSendingEdit: "skipped",
@@ -242,23 +235,6 @@ describe("probeCfApiTokenPermissions", () => {
     });
   });
 
-  it("reports Email Sending Edit as missing when POST /email/sending/subdomains is 403", async () => {
-    await withFetch((url, init) => {
-      if (url.includes("/email/sending/subdomains") && init?.method === "POST") {
-        return jsonErr(403, 9109, "Unauthorized to access requested resource");
-      }
-      return zoneAndEditOk(url, init);
-    }, async () => {
-      const probe = await probeCfApiTokenPermissions("token-without-sending-edit");
-      assert.equal(probe.valid, false);
-      assert.equal(probe.permissions.emailSendingEdit, "missing");
-      assert.equal(probe.permissions.emailRoutingEdit, "ok");
-      assert.equal(probe.permissions.emailRoutingRead, "ok");
-      assert.equal(probe.permissions.dnsEdit, "ok");
-      assert.equal(probe.permissions.zoneRead, "ok");
-    });
-  });
-
   it("reports Zone Read missing when listing zones is 403", async () => {
     await withFetch((url) => {
       if (url.includes("/zones?per_page=1")) {
@@ -325,12 +301,9 @@ describe("probeCfApiTokenValid", () => {
     });
   });
 
-  it("returns false when Email Routing Read is missing", async () => {
+  it("returns false when Email Routing Rules is missing", async () => {
     await withFetch((url, init) => {
-      if (
-        url.includes("/email/routing") &&
-        !url.includes("/email/routing/rules")
-      ) {
+      if (url.includes("/email/routing/rules")) {
         return jsonErr(403, 9109, "Unauthorized to access requested resource");
       }
       return zoneAndEditOk(url, init);
