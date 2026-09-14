@@ -125,6 +125,7 @@ export async function onboardSendingDomain(
     accountId?: string;
     cfApiToken?: string;
     knownDomains?: string[];
+    pinnedAccountId?: string;
   } = {},
 ): Promise<SendingOnboardResult> {
   const domain = domainInput.trim().toLowerCase();
@@ -185,7 +186,10 @@ export async function onboardSendingDomain(
       try {
         const probe = await probeCfApiTokenPermissions(
           opts.cfApiToken,
-          { knownDomains: opts.knownDomains ?? [] },
+          {
+            knownDomains: opts.knownDomains ?? [],
+            pinnedAccountId: opts.pinnedAccountId,
+          },
         );
         cfApiTokenPermissions = probe.permissions;
       } catch {

@@ -37,7 +37,7 @@ function withFetch(
 }
 
 function zoneAndEditOk(url: string, init?: RequestInit): Response {
-  if (url.includes("/zones?per_page=1") || url.includes("/zones?name=")) {
+  if (url.includes("/zones?")) {
     return jsonOk([{ id: "zone-123", name: "example.com" }]);
   }
   // Email Routing status (GET /zones/{id}/email/routing)
@@ -168,31 +168,29 @@ describe("probeCfApiTokenPermissions", () => {
     });
   });
 
-  it("reports zoneRead missing when zones list is empty and knownDomains also return empty", async () => {
+  it("treats zoneRead as unknown when zones list and knownDomains lookups are empty", async () => {
     let callCount = 0;
     await withFetch((url) => {
       callCount++;
-      // All zone queries return empty (simulates Zone Read missing)
       if (url.includes("/zones")) return jsonOk([]);
       return jsonErr(404, 10000, "Not found");
     }, async () => {
       const probe = await probeCfApiTokenPermissions("token-no-zone-read", {
         knownDomains: ["relaybase.xyz", "wedesk.so"],
       });
-      assert.equal(probe.valid, false);
-      assert.equal(probe.permissions.zoneRead, "missing");
+      assert.equal(probe.valid, true);
+      assert.equal(probe.permissions.zoneRead, "unknown");
       assert.equal(probe.permissions.emailRoutingEdit, "skipped");
       assert.equal(probe.permissions.emailSendingEdit, "skipped");
       assert.equal(probe.permissions.dnsEdit, "skipped");
-      // 1 initial + 2 domain lookups = 3 calls
       assert.ok(callCount >= 3);
     });
   });
 
   it("resolves zone via knownDomains when initial list is empty", async () => {
     await withFetch((url, init) => {
-      if (url.includes("/zones?per_page=1")) return jsonOk([]);
-      if (url.includes("/zones?name=relaybase.xyz")) {
+      if (url.includes("/zones?") && !url.includes("name=")) return jsonOk([]);
+      if (url.includes("name=relaybase.xyz")) {
         return jsonOk([{ id: "zone-456", name: "relaybase.xyz" }]);
       }
       // routing status for zone-456
@@ -237,7 +235,7 @@ describe("probeCfApiTokenPermissions", () => {
 
   it("reports Zone Read missing when listing zones is 403", async () => {
     await withFetch((url) => {
-      if (url.includes("/zones?per_page=1")) {
+      if (url.includes("/zones?")) {
         return jsonErr(403, 9109, "Unauthorized to access requested resource");
       }
       return jsonErr(404, 10000, "Not found");
@@ -268,7 +266,7 @@ describe("probeCfApiTokenPermissions", () => {
 
   it("treats HTTP 400/422 validation errors without auth rejection as allowed", async () => {
     await withFetch((url, init) => {
-      if (url.includes("/zones?per_page=1")) {
+      if (url.includes("/zones?") && !url.includes("name=")) {
         return jsonOk([{ id: "zone-123", name: "example.com" }]);
       }
       if (url.includes("/dns_records") && init?.method === "POST") {

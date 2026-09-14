@@ -11,6 +11,7 @@ import { onboardSendingDomain } from "../../lib/sending-onboard";
 import { createAppDb } from "../../../db/app";
 import { readMailbox } from "../../lib/catalog-store";
 import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
+import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
 
 const consoleSendingOnboard = new Hono<{ Bindings: Env }>();
 
@@ -67,6 +68,7 @@ consoleSendingOnboard.post("/", async (c) => {
       accountId: bodyAccountId || cf.accountId || c.env.CF_ACCOUNT_ID,
       cfApiToken: c.env.CF_API_TOKEN,
       knownDomains,
+      pinnedAccountId: bodyAccountId || cf.accountId || c.env.CF_ACCOUNT_ID,
     });
     if (result.ok) {
       return c.json({ domain: result.domain });
@@ -144,9 +146,10 @@ consoleSendingOnboard.post("/", async (c) => {
         } catch {
           // ignore
         }
+        const pinnedAccountId = await pinnedCfAccountId(c.env);
         const probe = await probeCfApiTokenPermissions(
           c.env.CF_API_TOKEN,
-          { knownDomains },
+          { knownDomains, pinnedAccountId },
         );
         cfApiTokenPermissions = probe.permissions;
       } catch {

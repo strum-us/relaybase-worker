@@ -44,6 +44,8 @@ consoleConnect.get("/", async (c) => {
     // ignore — probe will treat empty as "unknown" for Zone Read
   }
 
+  const pinnedAccountId = await pinnedCfAccountId(c.env);
+
   const [usage, d1, cfApiTokenProbe, accountId] = await Promise.all([
     r2Configured ? measureInboundR2Usage(c.env.INBOUND) : Promise.resolve(null),
     probeD1Connection(
@@ -54,9 +56,9 @@ consoleConnect.get("/", async (c) => {
       c.env.CF_API_TOKEN,
     ),
     cfApiTokenSet
-      ? probeCfApiTokenPermissions(apiToken, { knownDomains })
+      ? probeCfApiTokenPermissions(apiToken, { knownDomains, pinnedAccountId })
       : Promise.resolve(null),
-    pinnedCfAccountId(c.env),
+    Promise.resolve(pinnedAccountId),
   ]);
 
   return c.json({

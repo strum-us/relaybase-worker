@@ -1,3 +1,6 @@
+import { normalizeCfAccountId } from "./cf-account-id.ts";
+import { zoneBelongsToPinnedAccount } from "./cloudflare-zones.ts";
+
 const CF_API = "https://api.cloudflare.com/client/v4";
 
 export type CfTokenPermissionStatus =
@@ -88,6 +91,11 @@ function isPassing(status: CfTokenPermissionStatus): boolean {
   return status === "ok" || status === "skipped";
 }
 
+/** Zone Read cannot always be proven via GET /zones; inconclusive is not a failure. */
+function isZoneReadPassing(status: CfTokenPermissionStatus): boolean {
+  return isPassing(status) || status === "unknown";
+}
+
 const SKIPPED_PERMISSIONS: CfApiTokenPermissions = {
   zoneRead: "skipped",
   emailRoutingRead: "skipped",
@@ -98,19 +106,45 @@ const SKIPPED_PERMISSIONS: CfApiTokenPermissions = {
 
 type ZoneListResponse = {
   success?: boolean;
-  result?: Array<{ id: string; name?: string }>;
+  result?: Array<{ id: string; name?: string; account?: { id?: string } }>;
   errors?: Array<{ code?: number; message?: string }>;
 } | null;
 
+function zonesOnPinnedAccountList(
+  zones: ZoneListResponse["result"],
+  pinnedAccountId: string | undefined,
+): ZoneListResponse["result"] {
+  const pinned = normalizeCfAccountId(pinnedAccountId) ?? "";
+  if (!pinned || !zones) return zones;
+  return zones.filter((zone) =>
+    zoneBelongsToPinnedAccount(zone.account?.id, pinned),
+  );
+}
+
 async function fetchZoneList(
   token: string,
-  params?: URLSearchParams,
+  options?: { name?: string; pinnedAccountId?: string },
 ): Promise<{ status: number; data: ZoneListResponse }> {
-  const query = params ? `?${params.toString()}` : "?per_page=1";
-  const res = await fetch(`${CF_API}/zones${query}`, {
+  const pinned = normalizeCfAccountId(options?.pinnedAccountId) ?? "";
+  const params = new URLSearchParams();
+  if (options?.name) {
+    params.set("name", options.name.trim());
+  }
+  if (pinned) {
+    params.set("account.id", pinned);
+  }
+  if (!options?.name) {
+    params.set("per_page", pinned ? "50" : "1");
+    params.set("page", "1");
+  }
+  const query = params.toString();
+  const res = await fetch(`${CF_API}/zones?${query}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const data = (await res.json().catch(() => null)) as ZoneListResponse;
+  if (data?.result) {
+    data.result = zonesOnPinnedAccountList(data.result, pinned) ?? [];
+  }
   return { status: res.status, data };
 }
 
@@ -122,9 +156,9 @@ async function fetchZoneList(
  *    - If the token can list zones → use the first zone for routing/DNS probes.
  *    - If the list is empty, try each known domain via GET /zones?name={domain}.
  *      - Any hit → Zone Read OK, use that zone for routing/DNS probes.
- *      - All miss → Zone Read is "missing" (token lacks Zone → Zone → Read).
- *        Cloudflare returns an empty list (not 403) when Zone Read is absent
- *        but zone-scoped permissions (DNS Edit, Email Routing Edit) exist.
+ *      - All miss → Zone Read is "unknown" (inconclusive). Listing without
+ *        account.id or domain mismatch can look like missing Zone Read even when
+ *        the token is fine; only hard 401/403 is reported as "missing".
  *
  * 2. Email Routing Rules Edit (GET + empty POST /zones/{id}/email/routing/rules)
  * 3. DNS Edit (GET + empty POST /zones/{id}/dns_records)
@@ -133,11 +167,13 @@ async function fetchZoneList(
  *
  * @param token - CF_API_TOKEN value
  * @param options.knownDomains - Domains from the mailbox store, used to
- *   disambiguate "no zones" from "Zone Read permission missing."
+ *   resolve a zone id when the account-scoped list is empty.
+ * @param options.pinnedAccountId - CF account id (env or D1), same filter as
+ *   `CloudflareClient.listZones` / `resolveZoneId`.
  */
 export async function probeCfApiTokenPermissions(
   token: string,
-  options?: { knownDomains?: string[] },
+  options?: { knownDomains?: string[]; pinnedAccountId?: string },
 ): Promise<CfApiTokenProbe> {
   const trimmed = token.trim();
   if (!trimmed) {
@@ -154,7 +190,8 @@ export async function probeCfApiTokenPermissions(
   }
 
   try {
-    const { status, data } = await fetchZoneList(trimmed);
+    const pinnedAccountId = options?.pinnedAccountId;
+    const { status, data } = await fetchZoneList(trimmed, { pinnedAccountId });
 
     // Hard auth rejection → Zone Read is definitely missing.
     if (status === 401 || status === 403) {
@@ -223,25 +260,32 @@ export async function probeCfApiTokenPermissions(
 
       // Try each known domain. If any returns a zone, Zone Read works.
       for (const domain of knownDomains) {
-        const params = new URLSearchParams({ name: domain });
-        const domainResult = await fetchZoneList(trimmed, params);
+        const domainResult = await fetchZoneList(trimmed, {
+          name: domain,
+          pinnedAccountId,
+        });
         if (
           domainResult.data?.success === true &&
           domainResult.data.result &&
           domainResult.data.result.length > 0
         ) {
-          firstZone = domainResult.data.result[0]!.id;
-          break;
+          const want = domain.toLowerCase();
+          const match =
+            domainResult.data.result.find(
+              (z) => z.name?.toLowerCase() === want,
+            ) ?? domainResult.data.result[0];
+          firstZone = match?.id ?? null;
+          if (firstZone) break;
         }
       }
 
       if (!firstZone) {
-        // Token can't list zones and can't resolve any known domain.
-        // Zone Read is missing.
+        // Inconclusive: empty list is not proof of missing Zone Read (wrong
+        // account filter, domain not on CF, token zone resources, etc.).
         return {
-          valid: false,
+          valid: true,
           permissions: {
-            zoneRead: "missing",
+            zoneRead: "unknown",
             emailRoutingRead: "skipped",
             emailRoutingEdit: "skipped",
             emailSendingEdit: "skipped",
@@ -273,7 +317,7 @@ export async function probeCfApiTokenPermissions(
 
     return {
       valid:
-        isPassing(permissions.zoneRead) &&
+        isZoneReadPassing(permissions.zoneRead) &&
         isPassing(permissions.emailRoutingEdit) &&
         isPassing(permissions.dnsEdit),
       permissions,
