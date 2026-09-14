@@ -1,9 +1,9 @@
-import type { Env, SendEmailBinding } from "../env";
+import type { Env, SendEmailBinding } from "../../env";
 import {
   type CfEmailSendResult,
   CloudflareClient,
-} from "./cloudflare-client";
-import { createCloudflareClient } from "./cloudflare-config";
+} from "../cloudflare/cloudflare-client";
+import { createCloudflareClient } from "../cloudflare/cloudflare-config";
 
 export type SendOutboundParams = {
   from: string;

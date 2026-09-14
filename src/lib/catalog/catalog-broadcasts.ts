@@ -6,9 +6,9 @@
  * and also in D1 RELAYBASE_LOGS via recordOpsLog.
  */
 
-import type { Env } from "../env";
-import type { AppDb } from "../../db/app";
-import { createAppDb } from "../../db/app";
+import type { Env } from "../../env";
+import type { AppDb } from "../../../db/app";
+import { createAppDb } from "../../../db/app";
 import {
   createBroadcastRow as dbCreateBroadcastRow,
   deleteBroadcastRow as dbDeleteBroadcastRow,
@@ -18,7 +18,7 @@ import {
   updateBroadcastDraft as dbUpdateBroadcastDraft,
   updateBroadcastSendProgress as dbUpdateBroadcastSendProgress,
   updateBroadcastGroupIds as dbUpdateBroadcastGroupIds,
-} from "../../db/app/broadcasts";
+} from "../../../db/app/broadcasts";
 import {
   listContactsForGroupsFromDb,
   readAudienceCatalog,
@@ -30,11 +30,11 @@ import type {
   Broadcast,
   BroadcastSendRun,
 } from "./catalog-types";
-import { sendOutboundEmail } from "./email-send";
-import { isCloudflarePlanError } from "./cloudflare-api-hints";
+import { sendOutboundEmail } from "../mail/email-send";
+import { isCloudflarePlanError } from "../cloudflare/cloudflare-api-hints";
 import { readMailbox } from "./catalog-store";
-import { recordOpsLog } from "./ops-logs";
-import { recordSendLog } from "./send-logs";
+import { recordOpsLog } from "../ops/ops-logs";
+import { recordSendLog } from "../mail/send-logs";
 
 function plainTextToEmailHtml(text: string): string {
   const escaped = text
@@ -473,7 +473,7 @@ export async function deleteBroadcast(db: AppDb, id: string): Promise<boolean> {
   return dbDeleteBroadcastRow(db, id);
 }
 
-export { updateBroadcastGroupIds } from "../../db/app/broadcasts";
+export { updateBroadcastGroupIds } from "../../../db/app/broadcasts";
 
 function createAppDbFromEnv(env: Env): AppDb {
   return createAppDb(env.RELAYBASE_DB);

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { AppDb } from "./index";
 import { domainBranding } from "./schema";
-import type { DomainBrandingConfig, DmarcPolicy } from "../../src/lib/branding";
+import type { DomainBrandingConfig, DmarcPolicy } from "../../src/lib/cloudflare/branding";
 
 function defaultBrandingForDomain(domain: string): DomainBrandingConfig {
   return {

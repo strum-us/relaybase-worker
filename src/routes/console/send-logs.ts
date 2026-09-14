@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { listSendLogs } from "../../lib/send-logs";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { listSendLogs } from "../../lib/mail/send-logs";
 
 const consoleSendLogs = new Hono<{ Bindings: Env }>();
 

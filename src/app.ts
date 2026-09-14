@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "./env";
-import { desktopCors } from "./lib/cors";
-import { probeD1Connection } from "./lib/d1-status";
+import { desktopCors } from "./lib/auth/cors";
+import { probeD1Connection } from "./lib/d1/d1-status";
 import { consoleBroadcastDrafts } from "./routes/console/broadcast-drafts";
 import { mailAccountState } from "./routes/mail/account-state";
 import { consoleAudienceGroups } from "./routes/console/audience-groups";

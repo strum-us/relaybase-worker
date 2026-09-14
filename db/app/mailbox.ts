@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import type { AppDb } from "./index";
 import { addresses, domains, type AddressRow, type DomainRow } from "./schema";
-import type { MailboxAddress, MailboxData } from "../../src/lib/catalog-store";
+import type { MailboxAddress, MailboxData } from "../../src/lib/catalog/catalog-store";
 
 function normalizeDomain(input: string): string {
   return input.trim().toLowerCase().replace(/\.$/, "");

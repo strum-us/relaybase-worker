@@ -1,10 +1,10 @@
 import type { Context } from "hono";
-import type { Env } from "../env";
-import { createAppDb } from "../../db/app";
-import { getOwnerLoginConfig } from "../../db/app/owner";
-import { requireOwnerSession } from "./auth";
-import { requireMobilePassword } from "./mobile-auth";
-import type { OwnerScope } from "./owner-auth";
+import type { Env } from "../../env";
+import { createAppDb } from "../../../db/app";
+import { getOwnerLoginConfig } from "../../../db/app/owner";
+import { requireOwnerSession } from "../auth/auth";
+import { requireMobilePassword } from "../auth/mobile-auth";
+import type { OwnerScope } from "../auth/owner-auth";
 
 export type AccountIdentity = {
   /** "owner" or "team:{email}". Scopes every `account_state` / draft-attachment row. */

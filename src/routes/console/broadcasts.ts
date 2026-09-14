@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { cloudflareSendErrorBody } from "../../lib/cloudflare-api-hints";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { cloudflareSendErrorBody } from "../../lib/cloudflare/cloudflare-api-hints";
 import { createAppDb } from "../../../db/app";
 import {
   createBroadcastDraft,
@@ -10,7 +10,7 @@ import {
   readBroadcasts,
   sendBroadcast,
   updateBroadcastDraft,
-} from "../../lib/catalog-broadcasts";
+} from "../../lib/catalog/catalog-broadcasts";
 
 const consoleBroadcasts = new Hono<{ Bindings: Env }>();
 

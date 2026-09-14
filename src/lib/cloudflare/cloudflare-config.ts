@@ -1,4 +1,4 @@
-import type { Env } from "../env";
+import type { Env } from "../../env";
 import { normalizeCfAccountId } from "./cf-account-id.ts";
 import { CloudflareClient } from "./cloudflare-client.ts";
 

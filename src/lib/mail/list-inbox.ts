@@ -5,13 +5,13 @@ import {
   ackPendingEvents,
   listPendingEvents,
   type InboundEmailEvent,
-} from "../inbound-events";
+} from "./inbound-events";
 import {
   getInboundAttachment,
   getMailMessage,
   setMailReadState,
   type InboundEmailMeta,
-} from "../mailbox-store";
+} from "./mailbox-store";
 import {
   listMailboxPage,
   mailboxAddressCounts,
@@ -24,7 +24,7 @@ import {
 import {
   serializeInboundListItem,
   serializeInboundMessage,
-} from "../inbound-serialize";
+} from "./inbound-serialize";
 
 export type InboxListItem = ReturnType<typeof serializeInboundListItem>;
 export type InboxMessage = ReturnType<typeof serializeInboundMessage>;

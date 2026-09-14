@@ -1,6 +1,6 @@
 import type { R2Bucket } from "@cloudflare/workers-types";
 
-import { getMailAttachment } from "../mailbox-store";
+import { getMailAttachment } from "./mailbox-store";
 
 export type SendAttachmentInput = {
   filename: string;

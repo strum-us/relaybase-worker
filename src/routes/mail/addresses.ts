@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireMailSession } from "../../lib/auth";
+import { requireMailSession } from "../../lib/auth/auth";
 import { createAppDb } from "../../../db/app";
-import { readMailbox } from "../../lib/catalog-store";
+import { readMailbox } from "../../lib/catalog/catalog-store";
 
 const mailAddresses = new Hono<{ Bindings: Env }>();
 

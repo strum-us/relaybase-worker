@@ -1,12 +1,12 @@
 import type { Env } from "./env";
 import app from "./app";
 import { handleInboundEmail } from "./inbound";
-import { runAudienceCron } from "./lib/catalog-audience";
-import { runInboundIndexCron } from "./lib/inbound-index-cron";
-import { runRoutingRepairCron } from "./lib/routing-repair-cron";
-import { enqueueInboundEvent } from "./lib/inbound-events";
-import { recordOpsLog } from "./lib/ops-logs";
-import { deliverWebhooks } from "./lib/webhooks";
+import { runAudienceCron } from "./lib/catalog/catalog-audience";
+import { runInboundIndexCron } from "./lib/mail/inbound-index-cron";
+import { runRoutingRepairCron } from "./lib/ops/routing-repair-cron";
+import { enqueueInboundEvent } from "./lib/mail/inbound-events";
+import { recordOpsLog } from "./lib/ops/ops-logs";
+import { deliverWebhooks } from "./lib/catalog/webhooks";
 import { createAppDb, type AppDb } from "../db/app";
 
 async function dispatchInboundEvent(

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireMailSession } from "../../lib/auth";
-import { createCloudflareClient } from "../../lib/cloudflare-config";
+import { requireMailSession } from "../../lib/auth/auth";
+import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
 import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
 import {
@@ -10,19 +10,19 @@ import {
   removeInboundWorkerRouting,
   type InboundRoutingResult,
   type RemoveInboundRoutingResult,
-} from "../../lib/inbound-routing";
+} from "../../lib/cloudflare/inbound-routing";
 import {
   getInboundAttachment,
   getMailMessage,
   setMailReadState,
-} from "../../lib/mailbox-store";
+} from "../../lib/mail/mailbox-store";
 import {
   MIN_SEARCH_QUERY_LENGTH,
-} from "../../lib/inbound-search";
+} from "../../lib/mail/inbound-search";
 import {
   serializeInboundListItem,
   serializeInboundMessage,
-} from "../../lib/inbound-serialize";
+} from "../../lib/mail/inbound-serialize";
 import {
   listMailboxPage,
   mailboxAddressCounts,
@@ -30,7 +30,7 @@ import {
 import {
   searchMailbox,
 } from "../../../db/mail/search";
-import { readMailbox } from "../../lib/catalog-store";
+import { readMailbox } from "../../lib/catalog/catalog-store";
 
 const mailInbox = new Hono<{ Bindings: Env }>();
 
@@ -45,7 +45,7 @@ mailInbox.get("/notifications", async (c) => {
   }
 
   const limit = Number(c.req.query("limit") ?? "25");
-  const { listPendingEvents } = await import("../../lib/inbound-events");
+  const { listPendingEvents } = await import("../../lib/mail/inbound-events");
   const events = await listPendingEvents(createAppDb(c.env.RELAYBASE_DB), domain, limit);
   return c.json({ events });
 });
@@ -70,7 +70,7 @@ mailInbox.post("/notifications/ack", async (c) => {
     return c.json({ error: "ids must be a non-empty array" }, 400);
   }
 
-  const { ackPendingEvents } = await import("../../lib/inbound-events");
+  const { ackPendingEvents } = await import("../../lib/mail/inbound-events");
   const acked = await ackPendingEvents(createAppDb(c.env.RELAYBASE_DB), domain, ids);
   return c.json({ acked });
 });

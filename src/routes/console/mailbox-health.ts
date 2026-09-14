@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
+import { requireConsoleSession } from "../../lib/auth/auth";
 import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
-import { readMailbox } from "../../lib/catalog-store";
+import { readMailbox } from "../../lib/catalog/catalog-store";
 import { mailboxFreshness } from "../../../db/mail/messages";
 
 const consoleMailboxHealth = new Hono<{ Bindings: Env }>();

@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireSchemaAuth } from "../../lib/auth";
+import { requireSchemaAuth } from "../../lib/auth/auth";
 import { ownerIsConfigured } from "../../../db/app/owner";
 import { createAppDb } from "../../../db/app";
 import {
   anyProbeTableExists,
   applyPendingMigrations,
-} from "../../lib/d1-migrations";
+} from "../../lib/d1/d1-migrations";
 
 const consoleInitDb = new Hono<{ Bindings: Env }>();
 

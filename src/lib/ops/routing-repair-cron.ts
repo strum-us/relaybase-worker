@@ -18,14 +18,14 @@
  * registered address that lost its rule entirely), then records the result
  * to `ops_log` so the dashboard Log page surfaces the repair.
  */
-import type { Env } from "../env";
-import { createAppDb } from "../../db/app";
-import { readMailbox } from "./catalog-store";
-import { createCloudflareClient } from "./cloudflare-config";
+import type { Env } from "../../env";
+import { createAppDb } from "../../../db/app";
+import { readMailbox } from "../catalog/catalog-store";
+import { createCloudflareClient } from "../cloudflare/cloudflare-config";
 import {
   ensureInboundRouting,
   refreshAllWorkerRules,
-} from "./inbound-routing";
+} from "../cloudflare/inbound-routing";
 import { recordOpsLog } from "./ops-logs";
 
 export async function runRoutingRepairCron(env: Env): Promise<void> {

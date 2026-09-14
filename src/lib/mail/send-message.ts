@@ -1,11 +1,11 @@
 import type { Env } from "../../env";
-import { cloudflareSendErrorBody } from "../cloudflare-api-hints";
-import { sendOutboundEmail } from "../email-send";
-import { recordOpsLog } from "../ops-logs";
-import { recordSendLog } from "../send-logs";
+import { cloudflareSendErrorBody } from "../cloudflare/cloudflare-api-hints";
+import { sendOutboundEmail } from "./email-send";
+import { recordOpsLog } from "../ops/ops-logs";
+import { recordSendLog } from "./send-logs";
 import { createMailDb } from "../../../db/mail";
-import { storeSentMail, type ThinMailMeta } from "../mailbox-store";
-import { buildMimeMessage } from "../mime";
+import { storeSentMail, type ThinMailMeta } from "./mailbox-store";
+import { buildMimeMessage } from "./mime";
 import {
   assertSendMessageSize,
   attachmentsForEmailBinding,
@@ -19,7 +19,7 @@ import {
 import {
   findInvalidRecipients,
   normalizeRecipients,
-} from "../recipients";
+} from "./recipients";
 
 export type SendMailBody = {
   from?: string;

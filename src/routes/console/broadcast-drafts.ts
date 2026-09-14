@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { readAccountState, writeAccountState } from "../../lib/account-state";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { readAccountState, writeAccountState } from "../../lib/catalog/account-state";
 import { createAppDb } from "../../../db/app";
 
 const NAMESPACE = "broadcast";

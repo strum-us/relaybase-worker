@@ -9,11 +9,11 @@
  *
  * R2 stays the source of truth; a rebuild never deletes `meta.json`.
  */
-import type { Env } from "../env";
-import { createAppDb } from "../../db/app";
-import { getAppSettings } from "../../db/app/settings";
-import { createMailDb } from "../../db/mail";
-import { readMailbox } from "./catalog-store";
+import type { Env } from "../../env";
+import { createAppDb } from "../../../db/app";
+import { getAppSettings } from "../../../db/app/settings";
+import { createMailDb } from "../../../db/mail";
+import { readMailbox } from "../catalog/catalog-store";
 import {
   listMessageFolderIds,
   loadThinMeta,
@@ -22,8 +22,8 @@ import {
 import {
   mailboxAddressCounts,
   mailboxCounts,
-} from "../../db/mail/messages";
-import { upsertMailboxMessage } from "../../db/mail/messages";
+} from "../../../db/mail/messages";
+import { upsertMailboxMessage } from "../../../db/mail/messages";
 
 export async function runInboundIndexCron(env: Env): Promise<void> {
   if (!env.INBOUND) return;
@@ -109,7 +109,7 @@ async function reconcileDomain(
 
   if (stale.length > 0) {
     try {
-      const { deleteMailboxMessages } = await import("../../db/mail/messages");
+      const { deleteMailboxMessages } = await import("../../../db/mail/messages");
       await deleteMailboxMessages(mailDb, stale);
     } catch (error) {
       console.error(`Mailbox cron prune failed ${kind}/${domain}`, error);

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireSchemaAuth } from "../../lib/auth";
-import { applyPendingMigrations } from "../../lib/d1-migrations";
+import { requireSchemaAuth } from "../../lib/auth/auth";
+import { applyPendingMigrations } from "../../lib/d1/d1-migrations";
 import { ownerIsConfigured } from "../../../db/app/owner";
 import { createAppDb } from "../../../db/app";
 

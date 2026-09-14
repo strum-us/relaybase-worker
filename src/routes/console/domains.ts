@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { createCloudflareClient } from "../../lib/cloudflare-config";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
 import { createAppDb } from "../../../db/app";
 import {
   clearConflictingMxRecords,
@@ -12,18 +12,18 @@ import {
   refreshAllWorkerRules,
   type InboundRoutingResult,
   type MxConflictRecord,
-} from "../../lib/inbound-routing";
+} from "../../lib/cloudflare/inbound-routing";
 import {
   addDomain,
   listDomainSummaries,
   normalizeDomain,
   readMailbox,
   removeDomain,
-} from "../../lib/catalog-store";
+} from "../../lib/catalog/catalog-store";
 import {
   createMxConflictErrorPayload,
   createMxConflictOnboarding,
-} from "../../lib/domain-onboarding";
+} from "../../lib/cloudflare/domain-onboarding";
 
 const consoleDomains = new Hono<{ Bindings: Env }>();
 

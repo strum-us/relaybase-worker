@@ -25,11 +25,11 @@ import {
 import { normalizeAttachmentBytes } from "./attachment-bytes.ts";
 import { decodeMimeHeader, parseInboundMime } from "./mime-parse";
 import { buildMimeMessage, buildStrippedInboundMime } from "./mime";
-import type { MailDb } from "../../db/mail";
+import type { MailDb } from "../../../db/mail";
 import {
   deleteMailboxFts,
   upsertMailboxFts,
-} from "../../db/mail/search";
+} from "../../../db/mail/search";
 import {
   deleteMailboxMessages,
   mailboxIdsForDomain,
@@ -37,8 +37,8 @@ import {
   updateMailboxReadState,
   upsertMailboxMessage,
   recipientsColumn,
-} from "../../db/mail/messages";
-import type { MailboxKind, MailboxMessageRow } from "../../db/mail/schema";
+} from "../../../db/mail/messages";
+import type { MailboxKind, MailboxMessageRow } from "../../../db/mail/schema";
 
 export type InboundAttachmentMeta = {
   id: string;

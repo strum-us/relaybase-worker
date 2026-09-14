@@ -104,16 +104,22 @@ const SKIPPED_PERMISSIONS: CfApiTokenPermissions = {
   dnsEdit: "skipped",
 };
 
+type CfZoneListRow = {
+  id: string;
+  name?: string;
+  account?: { id?: string };
+};
+
 type ZoneListResponse = {
   success?: boolean;
-  result?: Array<{ id: string; name?: string; account?: { id?: string } }>;
+  result?: CfZoneListRow[];
   errors?: Array<{ code?: number; message?: string }>;
 } | null;
 
 function zonesOnPinnedAccountList(
-  zones: ZoneListResponse["result"],
+  zones: CfZoneListRow[] | undefined,
   pinnedAccountId: string | undefined,
-): ZoneListResponse["result"] {
+): CfZoneListRow[] | undefined {
   const pinned = normalizeCfAccountId(pinnedAccountId) ?? "";
   if (!pinned || !zones) return zones;
   return zones.filter((zone) =>

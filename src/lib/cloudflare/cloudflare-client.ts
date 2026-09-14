@@ -10,7 +10,7 @@ import {
   zonesOnPinnedAccount,
   type CfListedZone,
 } from "./cloudflare-zones.ts";
-import { buildMimeMessage } from "./mime.ts";
+import { buildMimeMessage } from "../mail/mime.ts";
 
 const API_BASE = "https://api.cloudflare.com/client/v4";
 

@@ -3,7 +3,7 @@
  * Tables: audience_groups, audience_contacts
  */
 
-import type { AppDb } from "../../db/app";
+import type { AppDb } from "../../../db/app";
 import {
   addManualContact as dbAddManualContact,
   createGroup as dbCreateGroup,
@@ -23,7 +23,7 @@ import {
   replaceSyncedContacts as dbReplaceSyncedContacts,
   updateGroup as dbUpdateGroup,
   updateSyncProgress as dbUpdateSyncProgress,
-} from "../../db/app/audience";
+} from "../../../db/app/audience";
 import type {
   AudienceContact,
   AudienceDataSource,

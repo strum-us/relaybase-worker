@@ -1,10 +1,10 @@
 import type { InboundEmailMeta } from "./mailbox-store";
-import type { AppDb } from "../../db/app";
+import type { AppDb } from "../../../db/app";
 import {
   ackPendingEventRows as dbAckPendingEventRows,
   enqueueInboundEventRow as dbEnqueueInboundEventRow,
   listPendingEventRows as dbListPendingEventRows,
-} from "../../db/app/inbound-events";
+} from "../../../db/app/inbound-events";
 
 export type InboundEmailEvent = {
   id: string;

@@ -1,9 +1,9 @@
-import type { Env } from "../env";
+import type { Env } from "../../env";
 import {
   MIGRATIONS,
   splitMigrationSql,
   type MigrationTarget,
-} from "../../db/migrations";
+} from "../../../db/migrations";
 import {
   d1ErrorText,
   isSchemaAlreadyPresentError,

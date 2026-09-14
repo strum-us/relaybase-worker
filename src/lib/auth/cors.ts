@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from "hono";
 
-import type { Env } from "../env";
+import type { Env } from "../../env";
 
 /**
  * Origins allowed to call Worker admin/API routes from a browser.

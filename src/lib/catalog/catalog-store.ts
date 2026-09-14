@@ -1,5 +1,5 @@
 /** Domains + addresses for the desktop mail client (packaged app). */
-import type { AppDb } from "../../db/app";
+import type { AppDb } from "../../../db/app";
 import {
   addDomain as dbAddDomain,
   getAddress as dbGetAddress,
@@ -10,7 +10,7 @@ import {
   updateAddress as dbUpdateAddress,
   updateAddressProfile as dbUpdateAddressProfile,
   upsertAddresses as dbUpsertAddresses,
-} from "../../db/app/mailbox";
+} from "../../../db/app/mailbox";
 
 export type MailboxAddress = {
   email: string;

@@ -1,5 +1,5 @@
-import type { Env } from "../env";
-import { createAppDb } from "../../db/app";
+import type { Env } from "../../env";
+import { createAppDb } from "../../../db/app";
 import { extractBearerToken } from "./auth";
 import {
   constantTimeEqual,

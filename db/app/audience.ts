@@ -13,7 +13,7 @@ import type {
   AudienceGroup,
   AudienceGroupSummary,
   AudienceSyncRun,
-} from "../../src/lib/catalog-types";
+} from "../../src/lib/catalog/catalog-types";
 
 const SYNC_HISTORY_LIMIT = 20;
 

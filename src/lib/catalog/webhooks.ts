@@ -1,6 +1,6 @@
-import type { InboundEmailEvent } from "./inbound-events";
-import { sha256Hex } from "./crypto";
-import type { AppDb } from "../../db/app";
+import type { InboundEmailEvent } from "../mail/inbound-events";
+import { sha256Hex } from "../auth/crypto";
+import type { AppDb } from "../../../db/app";
 import {
   createWebhookRow as dbCreateWebhookRow,
   deleteWebhookRow as dbDeleteWebhookRow,
@@ -11,7 +11,7 @@ import {
   recordWebhookFail as dbRecordWebhookFail,
   removeWebhookSecret as dbRemoveWebhookSecret,
   storeWebhookSecret as dbStoreWebhookSecret,
-} from "../../db/app/webhooks";
+} from "../../../db/app/webhooks";
 
 const MAX_WEBHOOKS_PER_DOMAIN = 3;
 const WEBHOOK_SECRET_PREFIX = "whsec_";

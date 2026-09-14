@@ -4,12 +4,12 @@ import {
   buildBouncePreview,
   isBounceMessage,
   parseBounceDiagnostic,
-} from "./lib/bounce-detect";
-import { recordOpsLog } from "./lib/ops-logs";
+} from "./lib/mail/bounce-detect";
+import { recordOpsLog } from "./lib/ops/ops-logs";
 import {
   storeInboundMail,
   type StoreInboundMailResult,
-} from "./lib/mailbox-store";
+} from "./lib/mail/mailbox-store";
 
 export async function handleInboundEmail(
   message: ForwardableEmailMessage,

@@ -4,7 +4,7 @@ import { broadcasts, type BroadcastRow } from "./schema";
 import type {
   Broadcast,
   BroadcastSendRun,
-} from "../../src/lib/catalog-types";
+} from "../../src/lib/catalog/catalog-types";
 
 const BROADCAST_HISTORY_LIMIT = 20;
 

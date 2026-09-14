@@ -1,5 +1,5 @@
 import type { MxConflictRecord } from "./inbound-routing";
-import type { MailboxDomainSummary } from "./catalog-store";
+import type { MailboxDomainSummary } from "../catalog/catalog-store";
 
 export type DomainOnboardingStep = {
   id: string;

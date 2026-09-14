@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { probeD1Connection } from "../../lib/d1-status";
-import { listOpsLogs } from "../../lib/ops-logs";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { probeD1Connection } from "../../lib/d1/d1-status";
+import { listOpsLogs } from "../../lib/ops/ops-logs";
 
 const consoleOpsLogs = new Hono<{ Bindings: Env }>();
 

@@ -1,17 +1,17 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
+import { requireConsoleSession } from "../../lib/auth/auth";
 import {
   cloudflareSendErrorBody,
   isCloudflarePlanError,
   isCloudflareTokenPermissionError,
-} from "../../lib/cloudflare-api-hints";
-import { createCloudflareClient } from "../../lib/cloudflare-config";
-import { onboardSendingDomain } from "../../lib/sending-onboard";
+} from "../../lib/cloudflare/cloudflare-api-hints";
+import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
+import { onboardSendingDomain } from "../../lib/cloudflare/sending-onboard";
 import { createAppDb } from "../../../db/app";
-import { readMailbox } from "../../lib/catalog-store";
-import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
-import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
+import { readMailbox } from "../../lib/catalog/catalog-store";
+import { probeCfApiTokenPermissions } from "../../lib/cloudflare/cloudflare-probe";
+import { pinnedCfAccountId } from "../../lib/cloudflare/pinned-cf-account";
 
 const consoleSendingOnboard = new Hono<{ Bindings: Env }>();
 

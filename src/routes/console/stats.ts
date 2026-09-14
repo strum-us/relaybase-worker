@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { readAudienceCatalog } from "../../lib/catalog-audience";
-import { readBroadcasts } from "../../lib/catalog-broadcasts";
-import { readMailbox } from "../../lib/catalog-store";
-import { listKeys } from "../../lib/keys";
-import { listSendLogs, type SendLogEntry } from "../../lib/send-logs";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { readAudienceCatalog } from "../../lib/catalog/catalog-audience";
+import { readBroadcasts } from "../../lib/catalog/catalog-broadcasts";
+import { readMailbox } from "../../lib/catalog/catalog-store";
+import { listKeys } from "../../lib/auth/keys";
+import { listSendLogs, type SendLogEntry } from "../../lib/mail/send-logs";
 import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
 import {
@@ -15,7 +15,7 @@ import {
   parseStatsRange,
   RANGE_MS,
   type StatsBucket,
-} from "../../lib/stats-buckets";
+} from "../../lib/ops/stats-buckets";
 
 const consoleStats = new Hono<{ Bindings: Env }>();
 

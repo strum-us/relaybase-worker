@@ -5,7 +5,7 @@ import {
   keyPrefixFromApiKey,
   sha256Hex,
 } from "./crypto";
-import type { AppDb } from "../../db/app";
+import type { AppDb } from "../../../db/app";
 import {
   createKeyRow as dbCreateKeyRow,
   deleteKeyRow as dbDeleteKeyRow,
@@ -13,7 +13,7 @@ import {
   resolveKeyByHash as dbResolveKeyByHash,
   setKeyActive as dbSetKeyActive,
   updateKeyHash as dbUpdateKeyHash,
-} from "../../db/app/keys";
+} from "../../../db/app/keys";
 
 export type KeyRecord = {
   id: string;

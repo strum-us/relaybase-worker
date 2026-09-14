@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
+import { requireConsoleSession } from "../../lib/auth/auth";
 import { createAppDb } from "../../../db/app";
 import {
   addManualContact,
@@ -15,8 +15,8 @@ import {
   removeContact,
   syncAudienceGroup,
   updateAudienceGroup,
-} from "../../lib/catalog-audience";
-import type { AudienceDataSourcePatch } from "../../lib/catalog-types";
+} from "../../lib/catalog/catalog-audience";
+import type { AudienceDataSourcePatch } from "../../lib/catalog/catalog-types";
 
 const consoleAudienceGroups = new Hono<{ Bindings: Env }>();
 

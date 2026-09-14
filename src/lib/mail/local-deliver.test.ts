@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { selectLocalInboundRecipients } from "./local-deliver-select.ts";
-import type { MailboxAddress } from "../catalog-store.ts";
+import type { MailboxAddress } from "../catalog/catalog-store.ts";
 
 const addresses: MailboxAddress[] = [
   { email: "isaac@wedesk.so", domain: "wedesk.so" },

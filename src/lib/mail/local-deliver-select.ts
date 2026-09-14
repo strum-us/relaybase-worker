@@ -1,4 +1,4 @@
-import type { MailboxAddress } from "../catalog-store";
+import type { MailboxAddress } from "../catalog/catalog-store";
 
 /**
  * Recipients on this install with inbound enabled. Order follows To then Cc.

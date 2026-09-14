@@ -1,5 +1,5 @@
 import type { R2Bucket } from "@cloudflare/workers-types";
-import type { AppDb } from "../../db/app";
+import type { AppDb } from "../../../db/app";
 import {
   deleteAccountStateValue,
   deleteAllDraftAttachmentMeta,
@@ -11,7 +11,7 @@ import {
   setAccountStateValue,
   type AccountStateValue,
   type DraftAttachmentMeta,
-} from "../../db/app/account-state";
+} from "../../../db/app/account-state";
 
 /**
  * Allow-list of `(namespace, key)` pairs the SHARED `/mail/account-state` and

@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
-import { probeD1Connection } from "../../lib/d1-status";
-import { emailBindingConfigured } from "../../lib/email-send";
-import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
-import { measureInboundR2Usage } from "../../lib/r2-usage";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { probeCfApiTokenPermissions } from "../../lib/cloudflare/cloudflare-probe";
+import { probeD1Connection } from "../../lib/d1/d1-status";
+import { emailBindingConfigured } from "../../lib/mail/email-send";
+import { pinnedCfAccountId } from "../../lib/cloudflare/pinned-cf-account";
+import { measureInboundR2Usage } from "../../lib/ops/r2-usage";
 import { createAppDb } from "../../../db/app";
-import { readMailbox } from "../../lib/catalog-store";
+import { readMailbox } from "../../lib/catalog/catalog-store";
 
 const consoleConnect = new Hono<{ Bindings: Env }>();
 

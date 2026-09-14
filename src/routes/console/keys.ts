@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
+import { requireConsoleSession } from "../../lib/auth/auth";
 import { createAppDb } from "../../../db/app";
 import {
   createKey,
@@ -8,7 +8,7 @@ import {
   revokeKey,
   rotateKey,
   setKeyActive,
-} from "../../lib/keys";
+} from "../../lib/auth/keys";
 
 const consoleKeys = new Hono<{ Bindings: Env }>();
 

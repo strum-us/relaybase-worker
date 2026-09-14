@@ -1,20 +1,20 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import { requireApiKey } from "../lib/auth";
-import { emailMatchesDomain } from "../lib/crypto";
-import { cloudflareSendErrorBody } from "../lib/cloudflare-api-hints";
-import { sendOutboundEmail } from "../lib/email-send";
-import { recordOpsLog } from "../lib/ops-logs";
-import { recordSendLog } from "../lib/send-logs";
+import { requireApiKey } from "../lib/auth/auth";
+import { emailMatchesDomain } from "../lib/auth/crypto";
+import { cloudflareSendErrorBody } from "../lib/cloudflare/cloudflare-api-hints";
+import { sendOutboundEmail } from "../lib/mail/email-send";
+import { recordOpsLog } from "../lib/ops/ops-logs";
+import { recordSendLog } from "../lib/mail/send-logs";
 import { createMailDb } from "../../db/mail";
-import { storeSentMail } from "../lib/mailbox-store";
-import { buildMimeMessage } from "../lib/mime";
+import { storeSentMail } from "../lib/mail/mailbox-store";
+import { buildMimeMessage } from "../lib/mail/mime";
 import { deliverToLocalInboxes } from "../lib/mail/local-deliver";
 import {
   findInvalidRecipients,
   normalizeRecipients,
-} from "../lib/recipients";
-import type { KeyRecord } from "../lib/keys";
+} from "../lib/mail/recipients";
+import type { KeyRecord } from "../lib/auth/keys";
 
 const send = new Hono<{ Bindings: Env }>();
 

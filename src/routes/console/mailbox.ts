@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
+import { requireConsoleSession } from "../../lib/auth/auth";
 import { createAppDb } from "../../../db/app";
 import {
   normalizeDomain,
@@ -8,7 +8,7 @@ import {
   readMailbox,
   writeMailbox,
   type MailboxAddress,
-} from "../../lib/catalog-store";
+} from "../../lib/catalog/catalog-store";
 
 const consoleMailbox = new Hono<{ Bindings: Env }>();
 

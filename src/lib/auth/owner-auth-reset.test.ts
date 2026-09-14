@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { normalizeCfAccountId } from "./cf-account-id.ts";
+import { normalizeCfAccountId } from "../cloudflare/cf-account-id.ts";
 
 const ACCOUNT = "3adf03d991843094a7343eebc0a98007";
 const OWNER_AUTH_SRC = readFileSync(

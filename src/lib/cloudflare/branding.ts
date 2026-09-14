@@ -1,9 +1,9 @@
 import type { CloudflareClient, CfDnsRecord } from "./cloudflare-client";
-import type { AppDb } from "../../db/app";
+import type { AppDb } from "../../../db/app";
 import {
   getDomainBranding as dbGetDomainBranding,
   mergeDomainBranding as dbMergeDomainBranding,
-} from "../../db/app/branding";
+} from "../../../db/app/branding";
 
 export type DmarcPolicy = "none" | "quarantine" | "reject";
 

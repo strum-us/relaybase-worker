@@ -1,7 +1,7 @@
 import { and, eq, lt } from "drizzle-orm";
 import type { AppDb } from "./index";
 import { webhookFails, webhookSecrets, webhooks } from "./schema";
-import type { StoredWebhook, WebhookRecord } from "../../src/lib/webhooks";
+import type { StoredWebhook, WebhookRecord } from "../../src/lib/catalog/webhooks";
 
 function rowToWebhookRecord(row: typeof webhooks.$inferSelect): WebhookRecord {
   const { secretHash: _secretHash, ...record } = row;
