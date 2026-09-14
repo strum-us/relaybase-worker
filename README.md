@@ -6,14 +6,16 @@ Cloudflare Worker that powers [Relaybase](https://relaybase.xyz) product email �
 
 This repository is the open-source routing Worker. The Relaybase desktop app is a separate commercial product that connects to a deployed instance of this Worker.
 
-**Releases** (versioned `worker.X.Y.Z.js` + install ZIP):
+**Current release: 0.1.7** (pairs with Relaybase desktop **0.1.9**). Release notes: [release-notes/0.1.7.md](./release-notes/0.1.7.md).
+
+**Downloads** (versioned `worker.X.Y.Z.js` + install ZIP):
 
 | | URL |
 |--|-----|
 | Latest release | https://github.com/strum-us/relaybase-worker/releases/latest |
 | Manifest | https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json |
-| Worker JS (0.1.6) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.6/worker.0.1.6.js |
-| Install ZIP (0.1.6) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.6/relaybase-worker-install-0.1.6.zip |
+| Worker JS (0.1.7) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.7/worker.0.1.7.js |
+| Install ZIP (0.1.7) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.7/relaybase-worker-install-0.1.7.zip |
 
 How to cut a release: [docs/RELEASE.md](./docs/RELEASE.md).
 
@@ -42,6 +44,12 @@ Your backend ──Bearer API key──▶ Relaybase Worker (Hono on Cloudflare)
 
 Inbound: Sender ──MX──▶ CF Email Routing ──email()──▶ Worker ──▶ R2 + D1
 ```
+
+After you upload a new Worker script, Cloudflare Email Routing can keep rules
+`enabled: true` but stop delivering to the Worker (Activity Log: **Delivery
+failed**, no inbox row). This Worker re-PUTs worker-action rules on a
+**15-minute cron** and via owner console repair routes
+(`POST /console/domains/routing/repair`, `POST /console/domains/routing/repair-all`).
 
 **Storage (no KV):**
 

@@ -207,6 +207,50 @@ export async function reenableDisabledWorkerRules(
   return { domain, zoneId, reenabled };
 }
 
+/**
+ * Re-PUT **every** Email Routing rule whose action is `worker` for a domain,
+ * regardless of its `enabled` state.
+ *
+ * Cloudflare can leave a rule `enabled: true` but with a stale Worker
+ * dispatch target after a script upload — the rule looks fine in the API
+ * and in the dashboard, yet Email Routing fails to deliver to the Worker
+ * ("Delivery failed" in the CF Activity Log with no Worker invocation, no
+ * `ops_log` row, and no R2/D1 write). The only reliable way to refresh the
+ * binding is to PUT the rule again. This function does that for every
+ * worker-action rule (registered address or orphaned), and also re-enables
+ * any rule left `enabled: false`.
+ *
+ * Call this after every Worker script upload and from the periodic
+ * routing-repair cron.
+ */
+export async function refreshAllWorkerRules(
+  cf: CloudflareClient,
+  domain: string,
+): Promise<ReenableDisabledRoutingResult> {
+  const zoneId = await resolveZoneId(cf, domain);
+  const existing = await cf.listEmailRoutingRules(zoneId);
+  const refreshed: ReenabledInboundRule[] = [];
+
+  for (const rule of existing) {
+    if (!rule.actions.some((action) => action.type === "worker")) continue;
+
+    await cf.updateEmailRoutingRule(zoneId, rule.id, {
+      enabled: true,
+      actions: rule.actions,
+      matchers: rule.matchers,
+    });
+    const literal = rule.matchers.find(
+      (matcher) => matcher.type === "literal" && matcher.field === "to",
+    );
+    refreshed.push({
+      ruleId: rule.id,
+      address: literal?.value?.trim().toLowerCase() ?? null,
+    });
+  }
+
+  return { domain, zoneId, reenabled: refreshed };
+}
+
 function matchesAddress(
   rule: CfEmailRoutingRule,
   address: string,
