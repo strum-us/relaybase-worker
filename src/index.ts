@@ -56,17 +56,29 @@ export default {
       const domain = to.includes("@")
         ? to.slice(to.lastIndexOf("@") + 1).trim().toLowerCase()
         : null;
-      await recordOpsLog(env.RELAYBASE_LOGS, {
-        kind: "inbound",
-        ok: false,
-        source: "inbound",
-        domain,
-        fromAddr: message.from,
-        toAddr: to,
-        subject: message.headers.get("subject")?.trim() || null,
-        messageId: message.headers.get("message-id")?.trim() || null,
-        error: error instanceof Error ? error.message : "Failed to store inbound email",
-      });
+      // Log the failure in the background (waitUntil) so a D1 write error
+      // never swallows the original inbound error, and so the re-throw is
+      // not delayed by the log write. Without this, a failed inbound that
+      // reached the Worker but threw during R2/D1 storage would be missing
+      // from the dashboard Log page.
+      ctx.waitUntil(
+        recordOpsLog(env.RELAYBASE_LOGS, {
+          kind: "inbound",
+          ok: false,
+          source: "inbound",
+          domain,
+          fromAddr: message.from,
+          toAddr: to,
+          subject: message.headers.get("subject")?.trim() || null,
+          messageId: message.headers.get("message-id")?.trim() || null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to store inbound email",
+        }).catch((logErr) => {
+          console.error("Failed to record inbound error log", logErr);
+        }),
+      );
       throw error;
     }
   },

@@ -9,7 +9,7 @@ import {
   findConflictingMxRecords,
   listInboundRoutingForDomains,
   MxConflictError,
-  reenableDisabledWorkerRules,
+  refreshAllWorkerRules,
   type InboundRoutingResult,
   type MxConflictRecord,
 } from "../../lib/inbound-routing";
@@ -247,7 +247,7 @@ consoleDomains.post("/routing/repair", async (c) => {
 
   try {
     const cf = await createCloudflareClient(c.env);
-    const reenabled = await reenableDisabledWorkerRules(cf, domain);
+    const reenabled = await refreshAllWorkerRules(cf, domain);
 
     const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
     const entries = mailbox.addresses
@@ -266,6 +266,70 @@ consoleDomains.post("/routing/repair", async (c) => {
       reenabledOrphanedRules: reenabled.reenabled,
       rules: result?.rules ?? [],
     });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to repair routing";
+    return c.json({ error: message }, 502);
+  }
+});
+
+// POST /console/domains/routing/repair-all — re-PUT every worker-action
+// rule for **all** domains, refreshing stale Worker dispatch bindings left
+// by a script upload (the silent "Delivery failed" case where rules appear
+// enabled but the Worker never receives the message). Also re-applies
+// literal-To rules for every registered address.
+consoleDomains.post("/routing/repair-all", async (c) => {
+  const denied = await requireConsoleSession(c);
+  if (denied) return denied;
+
+  try {
+    const cf = await createCloudflareClient(c.env);
+    const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+    const domains = mailbox.domains
+      .map((d) => d.trim().toLowerCase())
+      .filter(Boolean);
+
+    const results: Array<{
+      domain: string;
+      ok: boolean;
+      error?: string;
+      refreshedRules?: number;
+    }> = [];
+
+    for (const domain of domains) {
+      try {
+        const refresh = await refreshAllWorkerRules(cf, domain);
+        const entries = mailbox.addresses
+          .filter((address) => address.domain === domain)
+          .map((address) => ({
+            address: address.email,
+            inboundEnabled: address.inboundEnabled !== false,
+          }));
+        if (entries.length) {
+          await ensureInboundRouting(
+            cf,
+            domain,
+            entries,
+            c.env.WORKER_SCRIPT_NAME,
+          );
+        }
+        results.push({
+          domain,
+          ok: true,
+          refreshedRules: refresh.reenabled.length,
+        });
+      } catch (error) {
+        results.push({
+          domain,
+          ok: false,
+          error:
+            error instanceof Error ? error.message : "Failed to repair routing",
+        });
+      }
+    }
+
+    const allOk = results.every((r) => r.ok);
+    return c.json({ results }, allOk ? 200 : 207);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to repair routing";
