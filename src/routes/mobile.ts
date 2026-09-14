@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import { requireMobilePassword, type MobileAuthResult } from "../lib/mobile-auth";
+import { foldMobileIdentity } from "../lib/account-identity";
+import { createAccountStateRouter } from "./account-state-router";
 import { createAppDb } from "../../db/app";
 import { createMailDb } from "../../db/mail";
 import {
@@ -450,6 +452,17 @@ mobile.get("/notifications", async (c) => {
   );
   return c.json({ events });
 });
+
+/**
+ * `~/.relaybase/{scopeId}/*` replacement for teammates — same route set as
+ * `/mail/account-state`, folding the already-authenticated mobile-password
+ * email into an identityKey (owner-via-mobile is folded to `"owner"`; see
+ * `foldMobileIdentity`) instead of re-running auth.
+ */
+mobile.route(
+  "/account-state",
+  createAccountStateRouter(async (c) => foldMobileIdentity(c.env, c.get("authEmail"))),
+);
 
 /** Ack pending events for one domain. Body: `{ domain, ids }`. */
 mobile.post("/notifications/ack", async (c) => {

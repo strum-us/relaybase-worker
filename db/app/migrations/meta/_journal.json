@@ -8,6 +8,13 @@
       "when": 1788273148896,
       "tag": "0000_normal_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789349168882,
+      "tag": "0001_burly_titania",
+      "breakpoints": true
     }
   ]
 }
