@@ -41,7 +41,7 @@ function headerLineValue(
 }
 
 function stripAddressPrefix(value: string): string {
-  // "rfc822; isaac@wedesk.so" -> "isaac@wedesk.so"
+  // "rfc822; ada@example.com" -> "ada@example.com"
   const semi = value.indexOf(";");
   if (semi >= 0) return value.slice(semi + 1).trim();
   return value.trim();

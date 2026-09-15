@@ -11,7 +11,7 @@ import {
 describe("sendingRowMatchesDomain", () => {
   it("matches apex exactly, case-insensitive", () => {
     assert.equal(sendingRowMatchesDomain("Relaybase.xyz", "relaybase.xyz"), true);
-    assert.equal(sendingRowMatchesDomain("kloyapp.com", "relaybase.xyz"), false);
+    assert.equal(sendingRowMatchesDomain("example.org", "relaybase.xyz"), false);
   });
 
   it("matches leftmost wildcard under the zone, not the apex", () => {
@@ -38,9 +38,9 @@ describe("evaluateSendingHealth", () => {
 
   it("is ready when the apex sending row is enabled", () => {
     const result = evaluateSendingHealth({
-      domain: "kloyapp.com",
+      domain: "example.org",
       zoneId: "zone-1",
-      sendingRows: [{ name: "kloyapp.com", enabled: true }],
+      sendingRows: [{ name: "example.org", enabled: true }],
       hasCfBounceMx: null,
     });
     assert.deepEqual(
@@ -65,9 +65,9 @@ describe("evaluateSendingHealth", () => {
 
   it("falls back to cf-bounce MX when the subdomain list omits apex", () => {
     const result = evaluateSendingHealth({
-      domain: "kloyapp.com",
+      domain: "example.org",
       zoneId: "zone-1",
-      sendingRows: [{ name: "mail.kloyapp.com", enabled: true }],
+      sendingRows: [{ name: "mail.example.org", enabled: true }],
       hasCfBounceMx: true,
     });
     assert.equal(result.status, "ready");
@@ -111,17 +111,17 @@ describe("collectSendingHealth", () => {
   it("probes bounce MX only when the apex sending row is missing", async () => {
     let bounceCalls = 0;
     const snapshot = await collectSendingHealth(
-      ["kloyapp.com", "relaybase.xyz"],
+      ["example.org", "relaybase.xyz"],
       {
         async listZones() {
           return [
-            { id: "z-kloy", name: "kloyapp.com" },
+            { id: "z-org", name: "example.org" },
             { id: "z-rb", name: "relaybase.xyz" },
           ];
         },
         async listSendingSubdomains(zoneId) {
-          if (zoneId === "z-kloy") {
-            return [{ name: "kloyapp.com", enabled: true }];
+          if (zoneId === "z-org") {
+            return [{ name: "example.org", enabled: true }];
           }
           return [];
         },
@@ -134,7 +134,7 @@ describe("collectSendingHealth", () => {
     );
     assert.equal(bounceCalls, 1);
     assert.equal(
-      snapshot.domains.find((d) => d.domain === "kloyapp.com")?.status,
+      snapshot.domains.find((d) => d.domain === "example.org")?.status,
       "ready",
     );
     assert.equal(

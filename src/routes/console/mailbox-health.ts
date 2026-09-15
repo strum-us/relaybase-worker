@@ -15,7 +15,7 @@ const consoleMailboxHealth = new Hono<{ Bindings: Env }>();
  *   - per-domain last inbound `occurred_at` + retained count
  *   - per-domain last sent `occurred_at` + retained count
  *   - `staleDays` threshold flag (last inbound older than N days → the
- *     `wedesk.so` silent-receive case)
+ *     silent-receive case)
  *
  * Returns 503 when `RELAYBASE_MAIL` is not bound so the dashboard can show
  * "Mail index not configured" instead of an empty list.

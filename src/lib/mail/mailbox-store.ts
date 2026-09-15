@@ -387,7 +387,7 @@ export type StoreInboundMailResult = {
 /**
  * Store one inbound email. Dedupes by RFC Message-ID via the R2
  * `by-message-id/{id}` pointer ONLY — never scans `meta.json` folders (the
- * full-domain scan that used to OOM large mailboxes like `wedesk.so`).
+ * full-domain scan that used to OOM large mailboxes).
  */
 export async function storeInboundMail(
   bucket: R2Bucket,
