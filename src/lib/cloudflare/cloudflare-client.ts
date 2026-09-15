@@ -20,6 +20,24 @@ type CfResponse<T> = {
   result: T;
 };
 
+type CfResultInfo = {
+  page?: number;
+  per_page?: number;
+  total_pages?: number;
+  count?: number;
+  total_count?: number;
+};
+
+type CfPagedResponse<T> = CfResponse<T> & {
+  result_info?: CfResultInfo;
+};
+
+/** Cloudflare list endpoints default to 20; cap per request for load-more loops. */
+const CF_LIST_PER_PAGE = 50;
+
+/** Guard against runaway pagination if `result_info` is missing or wrong. */
+const CF_LIST_MAX_PAGES = 500;
+
 type CfLooseErrorBody = {
   code?: number;
   error?: string;
@@ -197,6 +215,43 @@ export class CloudflareClient {
     const { res, data } = await this.requestOnce<T>(path, init);
     if (res.ok && data.success) return data;
     throw this.formatCfError(res, data, path, init?.method ?? "GET");
+  }
+
+  /**
+   * Fetch every page of a Cloudflare v4 list endpoint (load-more until exhausted).
+   * Stops when the batch is empty, shorter than `per_page`, or `page >= total_pages`.
+   * If `result_info.total_pages` is absent, keeps loading while full pages arrive.
+   */
+  private async listAllPages<T>(
+    buildPath: (page: number, perPage: number) => string,
+  ): Promise<T[]> {
+    const items: T[] = [];
+    let page = 1;
+
+    for (;;) {
+      const path = buildPath(page, CF_LIST_PER_PAGE);
+      const { res, data } = await this.requestOnce<T[]>(path, {
+        method: "GET",
+      });
+      if (!res.ok || !data.success) {
+        throw this.formatCfError(res, data, path, "GET");
+      }
+
+      const batch = data.result ?? [];
+      items.push(...batch);
+
+      const totalPages = (data as CfPagedResponse<T[]>).result_info
+        ?.total_pages;
+
+      if (batch.length === 0) break;
+      if (totalPages != null && page >= totalPages) break;
+      if (batch.length < CF_LIST_PER_PAGE) break;
+      if (page >= CF_LIST_MAX_PAGES) break;
+
+      page += 1;
+    }
+
+    return items;
   }
 
   private async sendWithRetry<T>(
@@ -439,30 +494,14 @@ export class CloudflareClient {
     zoneId: string,
     opts: { type?: string; name?: string } = {},
   ): Promise<CfDnsRecord[]> {
-    const records: CfDnsRecord[] = [];
-    let page = 1;
-    for (;;) {
+    return this.listAllPages<CfDnsRecord>((page, perPage) => {
       const params = new URLSearchParams();
       if (opts.type) params.set("type", opts.type);
       if (opts.name) params.set("name", opts.name);
-      params.set("per_page", "100");
+      params.set("per_page", String(perPage));
       params.set("page", String(page));
-      const path = `/zones/${zoneId}/dns_records?${params.toString()}`;
-      const { res, data } = await this.requestOnce<CfDnsRecord[]>(path, {
-        method: "GET",
-      });
-      if (!res.ok || !data.success) {
-        throw this.formatCfError(res, data, path, "GET");
-      }
-      records.push(...(data.result ?? []));
-      const totalPages =
-        (data as CfResponse<CfDnsRecord[]> & {
-          result_info?: { total_pages?: number };
-        }).result_info?.total_pages ?? 1;
-      if (page >= totalPages) break;
-      page += 1;
-    }
-    return records;
+      return `/zones/${zoneId}/dns_records?${params.toString()}`;
+    });
   }
 
   async createDnsRecord(
@@ -567,10 +606,12 @@ export class CloudflareClient {
   }
 
   async listEmailRoutingRules(zoneId: string): Promise<CfEmailRoutingRule[]> {
-    const data = await this.request<CfEmailRoutingRule[]>(
-      `/zones/${zoneId}/email/routing/rules`,
-    );
-    return data.result ?? [];
+    return this.listAllPages<CfEmailRoutingRule>((page, perPage) => {
+      const params = new URLSearchParams();
+      params.set("per_page", String(perPage));
+      params.set("page", String(page));
+      return `/zones/${zoneId}/email/routing/rules?${params.toString()}`;
+    });
   }
 
   async createEmailRoutingRule(
