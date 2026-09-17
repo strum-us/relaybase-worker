@@ -1,10 +1,10 @@
 import type { Env } from "../../env";
 import { createAppDb, type AppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
-import { readMailbox } from "../catalog-store";
-import { enqueueInboundEvent } from "../inbound-events";
-import { storeInboundMail, type InboundEmailMeta } from "../mailbox-store";
-import { deliverWebhooks } from "../webhooks";
+import { readMailbox } from "../catalog/catalog-store";
+import { enqueueInboundEvent } from "./inbound-events";
+import { storeInboundMail, type InboundEmailMeta } from "./mailbox-store";
+import { deliverWebhooks } from "../catalog/webhooks";
 import { selectLocalInboundRecipients } from "./local-deliver-select";
 
 export type LocalDeliverWaitUntil = (promise: Promise<unknown>) => void;

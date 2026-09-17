@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
+import { requireConsoleSession } from "../../lib/auth/auth";
 import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
-import { readMailbox } from "../../lib/catalog-store";
+import { readMailbox } from "../../lib/catalog/catalog-store";
 import {
   deleteSendLogIndex,
   rebuildDomain,
-} from "../../lib/mailbox-store";
+} from "../../lib/mail/mailbox-store";
 
 const consoleRebuildMail = new Hono<{ Bindings: Env }>();
 

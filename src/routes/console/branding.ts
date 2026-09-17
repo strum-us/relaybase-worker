@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { createCloudflareClient } from "../../lib/cloudflare-config";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
 import { createAppDb } from "../../../db/app";
 import {
   applyDomainBrandingDns,
   fetchDomainBrandingStatus,
   mergeDomainBranding,
   type DmarcPolicy,
-} from "../../lib/branding";
+} from "../../lib/cloudflare/branding";
 
 const consoleBranding = new Hono<{ Bindings: Env }>();
 

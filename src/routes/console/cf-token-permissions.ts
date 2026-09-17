@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { probeCfApiTokenPermissions } from "../../lib/cloudflare/cloudflare-probe";
 import { createAppDb } from "../../../db/app";
-import { readMailbox } from "../../lib/catalog-store";
-import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
+import { readMailbox } from "../../lib/catalog/catalog-store";
+import { pinnedCfAccountId } from "../../lib/cloudflare/pinned-cf-account";
 
 const consoleCfTokenPermissions = new Hono<{ Bindings: Env }>();
 

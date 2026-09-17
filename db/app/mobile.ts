@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { AppDb } from "./index.ts";
 import { mobilePasswords } from "./schema.ts";
-import type { MobileConfig } from "../../src/lib/mobile-config.ts";
+import type { MobileConfig } from "../../src/lib/auth/mobile-config";
 
 export async function getAccountMobileConfig(
   db: AppDb,

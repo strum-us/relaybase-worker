@@ -1,7 +1,7 @@
 import { count, desc, eq } from "drizzle-orm";
 import type { AppDb } from "./index";
 import { apiKeys, type ApiKeyRow } from "./schema";
-import type { KeyRecord } from "../../src/lib/keys";
+import type { KeyRecord } from "../../src/lib/auth/keys";
 
 function rowToRecord(row: ApiKeyRow): KeyRecord {
   return {

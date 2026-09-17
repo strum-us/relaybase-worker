@@ -1,11 +1,9 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { readAudienceCatalog } from "../../lib/catalog-audience";
-import { readBroadcasts } from "../../lib/catalog-broadcasts";
-import { readMailbox } from "../../lib/catalog-store";
-import { listKeys } from "../../lib/keys";
-import { listSendLogs, type SendLogEntry } from "../../lib/send-logs";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { readMailbox } from "../../lib/catalog/catalog-store";
+import { listKeys } from "../../lib/auth/keys";
+import { listSendLogs, type SendLogEntry } from "../../lib/mail/send-logs";
 import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
 import {
@@ -15,7 +13,7 @@ import {
   parseStatsRange,
   RANGE_MS,
   type StatsBucket,
-} from "../../lib/stats-buckets";
+} from "../../lib/ops/stats-buckets";
 
 const consoleStats = new Hono<{ Bindings: Env }>();
 
@@ -75,10 +73,8 @@ consoleStats.get("/", async (c) => {
   const now = Date.now();
   const since = now - RANGE_MS[range];
 
-  const [mailbox, audience, broadcasts, sendLogs, keys] = await Promise.all([
+  const [mailbox, sendLogs, keys] = await Promise.all([
     readMailbox(createAppDb(c.env.RELAYBASE_DB)),
-    readAudienceCatalog(createAppDb(c.env.RELAYBASE_DB)),
-    readBroadcasts(createAppDb(c.env.RELAYBASE_DB)),
     listSendLogs(c.env.INBOUND, { limit: 500, domain: domain ?? undefined }),
     listKeys(createAppDb(c.env.RELAYBASE_DB)),
   ]);
@@ -86,12 +82,6 @@ consoleStats.get("/", async (c) => {
   const addresses = domain
     ? mailbox.addresses.filter((a) => a.domain === domain)
     : mailbox.addresses;
-  const contacts = domain
-    ? audience.contacts.filter((ct) => ct.domain === domain)
-    : audience.contacts;
-  const domainBroadcasts = domain
-    ? broadcasts.filter((b) => b.domain === domain)
-    : broadcasts;
   const domainKeys = domain
     ? keys.filter((k) => k.domain === domain)
     : keys;
@@ -128,8 +118,6 @@ consoleStats.get("/", async (c) => {
     }
   }
 
-  const drafts = domainBroadcasts.filter((b) => b.status === "draft").length;
-
   return c.json({
     domain,
     range,
@@ -137,9 +125,10 @@ consoleStats.get("/", async (c) => {
     totals: {
       domains: domain ? 1 : mailbox.domains.length,
       addresses: addresses.length,
-      audience: contacts.length,
-      broadcasts: domainBroadcasts.length,
-      drafts,
+      /** Audience + broadcasts live in HQ CRM (`hq/crm`), not Worker D1. */
+      audience: 0,
+      broadcasts: 0,
+      drafts: 0,
       sent: sumBuckets(sentBuckets),
       apiKeys: domainKeys.length,
       apiKeysUsed: keysUsedInRange.size,

@@ -1,7 +1,7 @@
 import { and, asc, eq, lt, sql } from "drizzle-orm";
 import type { AppDb } from "./index";
 import { inboundEvents } from "./schema";
-import type { InboundEmailEvent } from "../../src/lib/inbound-events";
+import type { InboundEmailEvent } from "../../src/lib/mail/inbound-events";
 
 const TTL_SECONDS = 7 * 24 * 60 * 60;
 

@@ -6,7 +6,7 @@ Cloudflare Worker that powers [Relaybase](https://relaybase.xyz) product email â
 
 This repository is the open-source routing Worker. The Relaybase desktop app is a separate commercial product that connects to a deployed instance of this Worker.
 
-**Current release: 0.1.7** (pairs with Relaybase desktop **0.1.9**). Release notes: [release-notes/0.1.7.md](./release-notes/0.1.7.md).
+**Current release: 0.1.8** (pairs with Relaybase desktop **0.1.10**). Release notes: [release-notes/0.1.8.md](./release-notes/0.1.8.md).
 
 **Downloads** (versioned `worker.X.Y.Z.js` + install ZIP):
 
@@ -14,8 +14,8 @@ This repository is the open-source routing Worker. The Relaybase desktop app is 
 |--|-----|
 | Latest release | https://github.com/strum-us/relaybase-worker/releases/latest |
 | Manifest | https://github.com/strum-us/relaybase-worker/releases/latest/download/worker-install-manifest.json |
-| Worker JS (0.1.7) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.7/worker.0.1.7.js |
-| Install ZIP (0.1.7) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.7/relaybase-worker-install-0.1.7.zip |
+| Worker JS (0.1.8) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.8/worker.0.1.8.js |
+| Install ZIP (0.1.8) | https://github.com/strum-us/relaybase-worker/releases/download/v0.1.8/relaybase-worker-install-0.1.8.zip |
 
 How to cut a release: [docs/RELEASE.md](./docs/RELEASE.md).
 

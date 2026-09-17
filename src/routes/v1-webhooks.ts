@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import { requireApiKey } from "../lib/auth";
+import { requireApiKey } from "../lib/auth/auth";
 import { createAppDb } from "../../db/app";
 import {
   createWebhook,
   deleteWebhook,
   listWebhooks,
-} from "../lib/webhooks";
+} from "../lib/catalog/webhooks";
 
 const v1Webhooks = new Hono<{ Bindings: Env }>();
 

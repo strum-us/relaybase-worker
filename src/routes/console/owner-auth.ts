@@ -10,11 +10,11 @@ import {
   resetOwner,
   rotatePasstoken,
   setupOwner,
-} from "../../lib/owner-auth";
+} from "../../lib/auth/owner-auth";
 import {
   requireConsoleSession,
   requirePepperBootstrap,
-} from "../../lib/auth";
+} from "../../lib/auth/auth";
 
 const consoleOwnerAuth = new Hono<{ Bindings: Env }>();
 

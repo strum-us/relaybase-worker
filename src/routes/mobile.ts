@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import { requireMobilePassword, type MobileAuthResult } from "../lib/mobile-auth";
-import { foldMobileIdentity } from "../lib/account-identity";
+import { requireMobilePassword, type MobileAuthResult } from "../lib/auth/mobile-auth";
+import { foldMobileIdentity } from "../lib/catalog/account-identity";
 import { createAccountStateRouter } from "./account-state-router";
 import { createAppDb } from "../../db/app";
 import { createMailDb } from "../../db/mail";
@@ -10,7 +10,7 @@ import {
   readMailbox,
   updateAddressProfile,
   type MailboxAddress,
-} from "../lib/catalog-store";
+} from "../lib/catalog/catalog-store";
 import {
   ackInboxNotifications,
   getInboxAttachmentResult,
@@ -21,15 +21,15 @@ import {
   searchInboxForDomains,
   setInboxReadStateMultiDomain,
 } from "../lib/mail/list-inbox";
-import { MIN_SEARCH_QUERY_LENGTH } from "../lib/inbound-search";
-import { serializeInboundListItem } from "../lib/inbound-serialize";
+import { MIN_SEARCH_QUERY_LENGTH } from "../lib/mail/inbound-search";
+import { serializeInboundListItem } from "../lib/mail/inbound-serialize";
 import { sendMailMessage, type SendMailBody } from "../lib/mail/send-message";
 import { listMailboxPage } from "../../db/mail/messages";
-import { createCloudflareClient } from "../lib/cloudflare-config";
+import { createCloudflareClient } from "../lib/cloudflare/cloudflare-config";
 import {
   collectSendingHealth,
   UNKNOWN_ERROR,
-} from "../lib/sending-health";
+} from "../lib/cloudflare/sending-health";
 
 const mobile = new Hono<{
   Bindings: Env;

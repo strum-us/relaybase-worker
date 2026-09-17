@@ -1,24 +1,24 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import { requireApiKey } from "../lib/auth";
+import { requireApiKey } from "../lib/auth/auth";
 import { createAppDb } from "../../db/app";
 import { createMailDb } from "../../db/mail";
 import {
   ackPendingEvents,
   listPendingEvents,
-} from "../lib/inbound-events";
+} from "../lib/mail/inbound-events";
 import {
   getInboundAttachment,
   getMailMessage,
   setMailReadState,
-} from "../lib/mailbox-store";
+} from "../lib/mail/mailbox-store";
 import {
   MIN_SEARCH_QUERY_LENGTH,
-} from "../lib/inbound-search";
+} from "../lib/mail/inbound-search";
 import {
   serializeInboundListItem,
   serializeInboundMessage,
-} from "../lib/inbound-serialize";
+} from "../lib/mail/inbound-serialize";
 import {
   listMailboxPage,
   mailboxAddressCounts,

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireMailSession } from "../../lib/auth";
+import { requireMailSession } from "../../lib/auth/auth";
 
 const mailFavicon = new Hono<{ Bindings: Env }>();
 

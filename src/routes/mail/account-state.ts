@@ -1,4 +1,4 @@
-import { resolveAccountIdentity } from "../../lib/account-identity";
+import { resolveAccountIdentity } from "../../lib/catalog/account-identity";
 import { createAccountStateRouter } from "../account-state-router";
 
 /**

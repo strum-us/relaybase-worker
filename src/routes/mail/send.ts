@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireMailSession } from "../../lib/auth";
+import { requireMailSession } from "../../lib/auth/auth";
 import { sendMailMessage, type SendMailBody } from "../../lib/mail/send-message";
 
 const mailSend = new Hono<{ Bindings: Env }>();

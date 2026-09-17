@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import type { AccountIdentity } from "../lib/account-identity";
+import type { AccountIdentity } from "../lib/catalog/account-identity";
 import {
   ACCOUNT_STATE_KEYS,
   deleteDraftAttachment,
@@ -11,7 +11,7 @@ import {
   readAccountState,
   removeAccountState,
   writeAccountState,
-} from "../lib/account-state";
+} from "../lib/catalog/account-state";
 import { createAppDb } from "../../db/app";
 
 /**
@@ -21,8 +21,8 @@ import { createAppDb } from "../../db/app";
  * via `resolveAccountIdentity`) and `/mobile/account-state` (mobile-password,
  * via `foldMobileIdentity` off the already-authenticated email) — so desktop
  * console, web console, and web/mobile "email" mode all read/write the same
- * D1 `account_state` table. See `worker/src/lib/account-state.ts` for the
- * `(namespace, key)` allow-list and `worker/src/lib/account-identity.ts` for
+ * D1 `account_state` table. See `worker/src/lib/catalog/account-state.ts` for the
+ * `(namespace, key)` allow-list and `worker/src/lib/catalog/account-identity.ts` for
  * identity resolution.
  */
 export function createAccountStateRouter(

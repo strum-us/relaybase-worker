@@ -72,7 +72,7 @@ export async function deleteAccountStateValue(
     .run();
 }
 
-// ─── draft attachment metadata (bytes live in R2 — see worker/src/lib/account-state.ts) ───
+// ─── draft attachment metadata (bytes live in R2 — see worker/src/lib/catalog/account-state.ts) ───
 
 export type DraftAttachmentMeta = {
   attachmentId: string;

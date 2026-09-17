@@ -15,7 +15,7 @@
  *     live Worker ingest path while the script runs are in R2 but get
  *     dropped from the in-memory snapshot, so the final overwrite silently
  *     evicts them from `_list.json`. This is exactly how the 2026-08-18
- *     wedesk.so inbox gap happened.
+ *     large-mailbox inbox gap happened.
  *   - It writes R2 objects directly and never touches the D1 FTS search
  *     index, so imported mail is invisible to server-side search until a
  *     backfill/reconcile runs.
@@ -29,7 +29,7 @@
  * Usage (from server/):
  *   node scripts/import-mbox.mjs
  *   node scripts/import-mbox.mjs --apply
- *   node scripts/import-mbox.mjs --mbox /path/to/file.mbox --email isaac@wedesk.so --apply
+ *   node scripts/import-mbox.mjs --mbox /path/to/file.mbox --email you@example.com --apply
  *
  * Requires CLOUDFLARE_API_TOKEN (or wrangler login token in the environment)
  * and CLOUDFLARE_ACCOUNT_ID (defaults to server/wrangler.toml).
@@ -51,9 +51,8 @@ const LOCAL_SENT_PATH = argValue(
   "--local-sent",
   join(homedir(), ".relaybase/mail/desktop/sent.json"),
 );
-const DEFAULT_MBOX =
-  "/Users/isaaclee/operation/33.wedesk.so/Takeout/Mail/All mail Including Spam and Trash.mbox";
-const DEFAULT_EMAIL = "isaac@wedesk.so";
+const DEFAULT_MBOX = "/path/to/takeout.mbox";
+const DEFAULT_EMAIL = "you@example.com";
 const BUCKET = "relaybase-mailbox";
 
 function accountIdFromWranglerToml() {

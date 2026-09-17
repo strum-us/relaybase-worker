@@ -3,13 +3,13 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { selectLocalInboundRecipients } from "./local-deliver-select.ts";
-import type { MailboxAddress } from "../catalog-store.ts";
+import type { MailboxAddress } from "../catalog/catalog-store.ts";
 
 const addresses: MailboxAddress[] = [
-  { email: "isaac@wedesk.so", domain: "wedesk.so" },
-  { email: "support@wedesk.so", domain: "wedesk.so" },
-  { email: "billing@kloyapp.com", domain: "kloyapp.com", inboundEnabled: false },
-  { email: "jon@kloyapp.com", domain: "kloyapp.com" },
+  { email: "ada@example.com", domain: "example.com" },
+  { email: "support@example.com", domain: "example.com" },
+  { email: "billing@example.org", domain: "example.org", inboundEnabled: false },
+  { email: "jon@example.org", domain: "example.org" },
 ];
 
 describe("selectLocalInboundRecipients", () => {
@@ -17,26 +17,26 @@ describe("selectLocalInboundRecipients", () => {
     assert.deepEqual(
       selectLocalInboundRecipients(
         [
-          "jon@kloyapp.com",
-          "isaac@wedesk.so",
-          "gssisaac@gmail.com",
-          "billing@kloyapp.com",
-          "support@wedesk.so",
+          "jon@example.org",
+          "ada@example.com",
+          "alice@example.net",
+          "billing@example.org",
+          "support@example.com",
         ],
         addresses,
       ),
-      ["jon@kloyapp.com", "isaac@wedesk.so", "support@wedesk.so"],
+      ["jon@example.org", "ada@example.com", "support@example.com"],
     );
   });
 
   it("dedupes case and skips permanent bounces", () => {
     assert.deepEqual(
       selectLocalInboundRecipients(
-        ["Isaac@Wedesk.so", "isaac@wedesk.so", "jon@kloyapp.com"],
+        ["Ada@Example.com", "ada@example.com", "jon@example.org"],
         addresses,
-        ["ISAAC@wedesk.so"],
+        ["ADA@example.com"],
       ),
-      ["jon@kloyapp.com"],
+      ["jon@example.org"],
     );
   });
 });

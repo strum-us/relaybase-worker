@@ -1,32 +1,32 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireConsoleSession } from "../../lib/auth";
-import { createCloudflareClient } from "../../lib/cloudflare-config";
+import { requireConsoleSession } from "../../lib/auth/auth";
+import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
 import { createAppDb } from "../../../db/app";
 import {
   ensureInboundRouting,
   MxConflictError,
   removeInboundWorkerRouting,
-} from "../../lib/inbound-routing";
+} from "../../lib/cloudflare/inbound-routing";
 import {
   CF_TOKEN_PERMISSION_ERROR_CODE,
   isCloudflareTokenPermissionError,
-} from "../../lib/cloudflare-api-hints";
-import { probeCfApiTokenPermissions } from "../../lib/cloudflare-probe";
-import { pinnedCfAccountId } from "../../lib/pinned-cf-account";
+} from "../../lib/cloudflare/cloudflare-api-hints";
+import { probeCfApiTokenPermissions } from "../../lib/cloudflare/cloudflare-probe";
+import { pinnedCfAccountId } from "../../lib/cloudflare/pinned-cf-account";
 import {
   normalizeDomain,
   readMailbox,
   removeAddress,
   updateAddress,
   upsertAddresses,
-} from "../../lib/catalog-store";
+} from "../../lib/catalog/catalog-store";
 import {
   clearAccountMobileConfig,
   getAccountMobileConfig,
   rotateAccountMobileConfig,
   toAccountMobileConfigPublicView,
-} from "../../lib/mobile-config";
+} from "../../lib/auth/mobile-config";
 
 const consoleAddresses = new Hono<{ Bindings: Env }>();
 

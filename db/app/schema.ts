@@ -223,7 +223,7 @@ export const ownerSessions = sqliteTable(
 // Replaces `~/.relaybase/{scopeId}/{email.json, mail/desktop/ui/*.json,
 // mail/desktop/drafts.json, ...}` so desktop and web read/write the same
 // durable state through the Worker instead of the local filesystem.
-// `identityKey` is "owner" or "team:{email}" (see worker/src/lib/account-identity.ts).
+// `identityKey` is "owner" or "team:{email}" (see worker/src/lib/catalog/account-identity.ts).
 
 export const accountState = sqliteTable(
   "account_state",

@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireMailSession } from "../../lib/auth";
+import { requireMailSession } from "../../lib/auth/auth";
 import { createAppDb } from "../../../db/app";
-import { readMailbox } from "../../lib/catalog-store";
-import { createCloudflareClient } from "../../lib/cloudflare-config";
+import { readMailbox } from "../../lib/catalog/catalog-store";
+import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
 import {
   collectSendingHealth,
   UNKNOWN_ERROR,
-} from "../../lib/sending-health";
-import { normalizeCfAccountId } from "../../lib/cf-account-id.ts";
+} from "../../lib/cloudflare/sending-health";
+import { normalizeCfAccountId } from "../../lib/cloudflare/cf-account-id";
 
 const mailSendingHealth = new Hono<{ Bindings: Env }>();
 

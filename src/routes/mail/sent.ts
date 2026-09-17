@@ -1,18 +1,18 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
-import { requireMailSession } from "../../lib/auth";
+import { requireMailSession } from "../../lib/auth/auth";
 import { createMailDb } from "../../../db/mail";
 import {
   getMailMessage,
   getMailAttachment,
-} from "../../lib/mailbox-store";
+} from "../../lib/mail/mailbox-store";
 import {
   listMailboxPage,
 } from "../../../db/mail/messages";
 import {
   searchMailbox,
 } from "../../../db/mail/search";
-import { MIN_SEARCH_QUERY_LENGTH } from "../../lib/inbound-search";
+import { MIN_SEARCH_QUERY_LENGTH } from "../../lib/mail/inbound-search";
 
 const mailSent = new Hono<{ Bindings: Env }>();
 
