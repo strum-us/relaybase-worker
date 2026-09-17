@@ -7,12 +7,14 @@ import {
   clearConflictingMxRecords,
   ensureInboundRouting,
   findConflictingMxRecords,
+  listInboundRouting,
   listInboundRoutingForDomains,
   MxConflictError,
   refreshAllWorkerRules,
   type InboundRoutingResult,
   type MxConflictRecord,
 } from "../../lib/cloudflare/inbound-routing";
+import { recordRoutingRepairOpsLog } from "../../lib/ops/routing-repair-log";
 import {
   addDomain,
   listDomainSummaries,
@@ -247,9 +249,14 @@ consoleDomains.post("/routing/repair", async (c) => {
 
   try {
     const cf = await createCloudflareClient(c.env);
+    const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
+    const registered = mailbox.addresses
+      .filter((address) => address.domain === domain)
+      .map((address) => address.email);
+    const before = await listInboundRouting(cf, domain, registered);
+
     const reenabled = await refreshAllWorkerRules(cf, domain);
 
-    const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
     const entries = mailbox.addresses
       .filter((address) => address.domain === domain)
       .map((address) => ({
@@ -260,6 +267,13 @@ consoleDomains.post("/routing/repair", async (c) => {
       ? await ensureInboundRouting(cf, domain, entries, c.env.WORKER_SCRIPT_NAME)
       : null;
 
+    await recordRoutingRepairOpsLog(c.env.RELAYBASE_LOGS, {
+      domain,
+      ok: true,
+      before,
+      refreshedRules: reenabled.reenabled.length,
+    });
+
     return c.json({
       domain,
       zoneId: reenabled.zoneId,
@@ -269,6 +283,11 @@ consoleDomains.post("/routing/repair", async (c) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to repair routing";
+    await recordRoutingRepairOpsLog(c.env.RELAYBASE_LOGS, {
+      domain,
+      ok: false,
+      error: message,
+    });
     return c.json({ error: message }, 502);
   }
 });
@@ -297,7 +316,12 @@ consoleDomains.post("/routing/repair-all", async (c) => {
     }> = [];
 
     for (const domain of domains) {
+      const registered = mailbox.addresses
+        .filter((address) => address.domain === domain)
+        .map((address) => address.email);
+      let before;
       try {
+        before = await listInboundRouting(cf, domain, registered);
         const refresh = await refreshAllWorkerRules(cf, domain);
         const entries = mailbox.addresses
           .filter((address) => address.domain === domain)
@@ -313,17 +337,29 @@ consoleDomains.post("/routing/repair-all", async (c) => {
             c.env.WORKER_SCRIPT_NAME,
           );
         }
+        await recordRoutingRepairOpsLog(c.env.RELAYBASE_LOGS, {
+          domain,
+          ok: true,
+          before,
+          refreshedRules: refresh.reenabled.length,
+        });
         results.push({
           domain,
           ok: true,
           refreshedRules: refresh.reenabled.length,
         });
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to repair routing";
+        await recordRoutingRepairOpsLog(c.env.RELAYBASE_LOGS, {
+          domain,
+          ok: false,
+          error: message,
+        });
         results.push({
           domain,
           ok: false,
-          error:
-            error instanceof Error ? error.message : "Failed to repair routing",
+          error: message,
         });
       }
     }

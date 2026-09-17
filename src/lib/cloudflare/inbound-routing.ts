@@ -220,8 +220,7 @@ export async function reenableDisabledWorkerRules(
  * worker-action rule (registered address or orphaned), and also re-enables
  * any rule left `enabled: false`.
  *
- * Call this after every Worker script upload and from the periodic
- * routing-repair cron.
+ * Call this from console routing repair when the user (or onboarding) fixes drift.
  */
 export async function refreshAllWorkerRules(
   cf: CloudflareClient,

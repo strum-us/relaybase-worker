@@ -2,7 +2,6 @@ import type { Env } from "./env";
 import app from "./app";
 import { handleInboundEmail } from "./inbound";
 import { runInboundIndexCron } from "./lib/mail/inbound-index-cron";
-import { runRoutingRepairCron } from "./lib/ops/routing-repair-cron";
 import { enqueueInboundEvent } from "./lib/mail/inbound-events";
 import { recordOpsLog } from "./lib/ops/ops-logs";
 import { deliverWebhooks } from "./lib/catalog/webhooks";
@@ -26,11 +25,6 @@ export default {
     ctx.waitUntil(
       runInboundIndexCron(env).catch((error) => {
         console.error("Inbound index cron failed", error);
-      }),
-    );
-    ctx.waitUntil(
-      runRoutingRepairCron(env).catch((error) => {
-        console.error("Routing repair cron failed", error);
       }),
     );
   },
