@@ -9,6 +9,7 @@ import {
   zonesListQuery,
   zonesOnPinnedAccount,
   type CfListedZone,
+  type CfZoneDetails,
 } from "./cloudflare-zones.ts";
 import { buildMimeMessage } from "../mail/mime.ts";
 
@@ -461,6 +462,7 @@ export class CloudflareClient {
           name?: string;
           status?: string;
           account?: { id?: string };
+          name_servers?: string[];
         }>
       >(`/zones?${zonesListQuery(page, pinned)}`);
       const batch = data.result ?? [];
@@ -474,20 +476,53 @@ export class CloudflareClient {
     return zonesOnPinnedAccount(zones, pinned);
   }
 
-  async resolveZoneId(domain: string): Promise<string | null> {
+  async getZoneByName(domain: string): Promise<CfZoneDetails | null> {
     if (!this.accountId) return null;
     const name = domain.trim();
     const params = new URLSearchParams({ name });
     params.set("account.id", this.accountId);
     const data = await this.request<
-      Array<{ id: string; name: string; account?: { id?: string } }>
+      Array<{
+        id: string;
+        name: string;
+        status?: string;
+        account?: { id?: string };
+        name_servers?: string[];
+      }>
     >(`/zones?${params.toString()}`);
     const want = name.toLowerCase();
     const zone = data.result?.find((item) => {
       if (item.name.toLowerCase() !== want) return false;
       return zoneBelongsToPinnedAccount(item.account?.id, this.accountId);
     });
+    return zone ? mapCfZoneRow(zone) : null;
+  }
+
+  async resolveZoneId(domain: string): Promise<string | null> {
+    const zone = await this.getZoneByName(domain);
     return zone?.id ?? null;
+  }
+
+  /** Create a Cloudflare zone on the pinned account (full setup — NS change required). */
+  async createZone(domain: string): Promise<CfZoneDetails> {
+    const accountId = await this.requireAccountId();
+    const name = domain.trim().toLowerCase();
+    const data = await this.request<{
+      id: string;
+      name: string;
+      status?: string;
+      name_servers?: string[];
+      account?: { id?: string };
+    }>("/zones", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        account: { id: accountId },
+        type: "full",
+        jump_start: false,
+      }),
+    });
+    return mapCfZoneRow(data.result);
   }
 
   async listDnsRecords(

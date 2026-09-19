@@ -26,6 +26,7 @@ import {
   createMxConflictErrorPayload,
   createMxConflictOnboarding,
 } from "../../lib/cloudflare/domain-onboarding";
+import { enrichDomainSummariesWithCloudflare } from "../../lib/cloudflare/enrich-domain-summaries";
 
 const consoleDomains = new Hono<{ Bindings: Env }>();
 
@@ -38,10 +39,12 @@ consoleDomains.get("/", async (c) => {
   if (c.env.CF_API_TOKEN) {
     try {
       const cf = await createCloudflareClient(c.env);
+      await enrichDomainSummariesWithCloudflare(cf, summaries);
       await Promise.allSettled(
         summaries.map(async (summary) => {
+          if (summary.onboarding?.status !== "ready") return;
           try {
-            const zoneId = await cf.resolveZoneId(summary.domain);
+            const zoneId = summary.onboarding.zoneId ?? (await cf.resolveZoneId(summary.domain));
             if (!zoneId) return;
             const conflicts = await findConflictingMxRecords(
               cf,
@@ -88,7 +91,15 @@ consoleDomains.post("/", async (c) => {
 
   try {
     cf = await createCloudflareClient(c.env);
-    zoneId = await cf.resolveZoneId(domain);
+    let zone = await cf.getZoneByName(domain);
+    if (!zone) {
+      try {
+        zone = await cf.createZone(domain);
+      } catch {
+        // Token may lack Zone Create — enrich after D1 add will show ZONE_NOT_FOUND.
+      }
+    }
+    zoneId = zone?.id ?? null;
   } catch {
     // ignore if CF_API_TOKEN is not configured or resolve fails
   }
@@ -166,6 +177,9 @@ consoleDomains.post("/", async (c) => {
       domain,
     );
     const summaries = listDomainSummaries(data);
+    if (cf) {
+      await enrichDomainSummariesWithCloudflare(cf, summaries);
+    }
     return c.json({
       domains: summaries,
       onboarding:

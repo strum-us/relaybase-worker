@@ -29,7 +29,15 @@ consoleZones.get("/", async (c) => {
 
   try {
     const zones = await cf.listZones();
-    return c.json({ zones });
+    return c.json({
+      zones: zones.map((zone) => ({
+        id: zone.id,
+        name: zone.name,
+        status: zone.status,
+        accountId: zone.accountId,
+        nameServers: zone.nameServers,
+      })),
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to list zones";
