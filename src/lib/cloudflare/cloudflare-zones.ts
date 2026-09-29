@@ -5,19 +5,27 @@ export type CfListedZone = {
   name: string;
   status: string;
   accountId: string;
+  nameServers: string[];
 };
+
+export type CfZoneDetails = CfListedZone;
 
 export function mapCfZoneRow(zone: {
   id?: string;
   name?: string;
   status?: string;
   account?: { id?: string };
+  name_servers?: string[];
 }): CfListedZone {
+  const nameServers = Array.isArray(zone.name_servers)
+    ? zone.name_servers.filter((ns): ns is string => typeof ns === "string" && ns.length > 0)
+    : [];
   return {
     id: zone.id ?? "",
     name: zone.name ?? "",
     status: zone.status ?? "",
     accountId: normalizeCfAccountId(zone.account?.id) ?? "",
+    nameServers,
   };
 }
 

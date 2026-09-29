@@ -72,6 +72,7 @@ describe("mapCfZoneRow", () => {
         name: "Relaybase.xyz",
         status: "active",
         accountId: ACCOUNT_A,
+        nameServers: [],
       },
     );
   });
