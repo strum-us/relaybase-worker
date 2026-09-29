@@ -35,6 +35,8 @@ export const ACCOUNT_STATE_KEYS: Record<string, readonly string[]> = {
   ui: [
     "enabled-accounts.json",
     "available-addresses.json",
+    "ui-preferences.json",
+    // Legacy keys kept so existing D1 rows / older clients still read and write.
     "sidebar.json",
     "accounts.json",
     "read.json",
