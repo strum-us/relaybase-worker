@@ -35,8 +35,10 @@ consoleDomains.get("/", async (c) => {
   if (denied) return denied;
   const data = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
   const summaries = listDomainSummaries(data);
+  const quick =
+    c.req.query("quick") === "1" || c.req.query("quick") === "true";
 
-  if (c.env.CF_API_TOKEN) {
+  if (!quick && c.env.CF_API_TOKEN) {
     try {
       const cf = await createCloudflareClient(c.env);
       await enrichDomainSummariesWithCloudflare(cf, summaries);
