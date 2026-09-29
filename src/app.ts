@@ -23,6 +23,7 @@ import { consoleMailboxHealth } from "./routes/console/mailbox-health";
 import { consoleSettings } from "./routes/console/settings";
 import { consoleSendingOnboard } from "./routes/console/sending-onboard";
 import { consoleZones } from "./routes/console/zones";
+import { mailBootstrap } from "./routes/mail/bootstrap";
 import { mailAddresses } from "./routes/mail/addresses";
 import { mailFavicon } from "./routes/mail/favicon";
 import { mailInbox } from "./routes/mail/inbox";
@@ -105,6 +106,7 @@ app.route("/console/rebuild-mail", consoleRebuildMail);
 app.route("/console/mailbox-health", consoleMailboxHealth);
 app.route("/console/settings", consoleSettings);
 // End-user mail operations (owner-session auth).
+app.route("/mail/bootstrap", mailBootstrap);
 app.route("/mail/addresses", mailAddresses);
 app.route("/mail/sending-health", mailSendingHealth);
 app.route("/mail/inbox", mailInbox);
