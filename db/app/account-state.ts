@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import type { AppDb } from "./index";
 import { accountState, draftAttachments } from "./schema";
 
@@ -9,6 +9,82 @@ export type AccountStateValue = {
 
 function rowId(identityKey: string, namespace: string, key: string): string {
   return `${identityKey}:${namespace}:${key}`;
+}
+
+/** UI keys bundled into GET /mail/bootstrap (keep in sync with bootstrap route). */
+export const MAIL_BOOTSTRAP_UI_KEYS = [
+  "enabled-accounts.json",
+  "available-addresses.json",
+  "ui-preferences.json",
+  "read.json",
+  "trash.json",
+] as const;
+
+export type MailBootstrapAccountState = {
+  ui: Record<string, unknown | null>;
+  emailPrefs: unknown | null;
+  drafts: unknown | null;
+};
+
+/** One D1 round-trip for all mail-bootstrap account_state rows. */
+export async function readMailBootstrapAccountState(
+  db: AppDb,
+  identityKey: string,
+): Promise<MailBootstrapAccountState> {
+  const ui: Record<string, unknown | null> = Object.fromEntries(
+    MAIL_BOOTSTRAP_UI_KEYS.map((key) => [key, null]),
+  );
+  if (!db) {
+    return { ui, emailPrefs: null, drafts: null };
+  }
+
+  const rows = await db
+    .select({
+      namespace: accountState.namespace,
+      key: accountState.key,
+      valueJson: accountState.valueJson,
+    })
+    .from(accountState)
+    .where(
+      and(
+        eq(accountState.identityKey, identityKey),
+        or(
+          and(
+            eq(accountState.namespace, "ui"),
+            inArray(accountState.key, [...MAIL_BOOTSTRAP_UI_KEYS]),
+          ),
+          and(
+            eq(accountState.namespace, "prefs"),
+            eq(accountState.key, "email.json"),
+          ),
+          and(
+            eq(accountState.namespace, "mail"),
+            eq(accountState.key, "drafts.json"),
+          ),
+        ),
+      ),
+    )
+    .all();
+
+  let emailPrefs: unknown | null = null;
+  let drafts: unknown | null = null;
+  for (const row of rows) {
+    let value: unknown = null;
+    try {
+      value = JSON.parse(row.valueJson);
+    } catch {
+      value = null;
+    }
+    if (row.namespace === "ui" && row.key in ui) {
+      ui[row.key] = value;
+    } else if (row.namespace === "prefs" && row.key === "email.json") {
+      emailPrefs = value;
+    } else if (row.namespace === "mail" && row.key === "drafts.json") {
+      drafts = value;
+    }
+  }
+
+  return { ui, emailPrefs, drafts };
 }
 
 export async function getAccountStateValue(

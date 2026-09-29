@@ -2,22 +2,13 @@ import { Hono } from "hono";
 import type { Env } from "../../env";
 import { requireMailSession } from "../../lib/auth/auth";
 import { resolveAccountIdentity } from "../../lib/catalog/account-identity";
-import { readAccountState } from "../../lib/catalog/account-state";
 import { readMailbox } from "../../lib/catalog/catalog-store";
+import { readMailBootstrapAccountState } from "../../../db/app/account-state";
 import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
-import { mailboxAddressCounts, mailboxCounts } from "../../../db/mail/messages";
+import { mailboxInboundBootstrapCounts } from "../../../db/mail/messages";
 
 const mailBootstrap = new Hono<{ Bindings: Env }>();
-
-/** Keys bundled into one mail-scoped bootstrap (sidebar + mailbox UI state). */
-const UI_KEYS = [
-  "enabled-accounts.json",
-  "available-addresses.json",
-  "ui-preferences.json",
-  "read.json",
-  "trash.json",
-] as const;
 
 /**
  * Single round-trip for Email mode shell: catalog, account_state UI blobs,
@@ -38,67 +29,10 @@ mailBootstrap.get("/", async (c) => {
   const mailbox = await readMailbox(appDb);
   const mailDb = createMailDb(c.env.RELAYBASE_MAIL);
 
-  const [uiState, emailPrefs, draftsState, domainStats] = await Promise.all([
-    Promise.all(
-      UI_KEYS.map(async (key) => {
-        const record = await readAccountState(
-          appDb,
-          identity.identityKey,
-          "ui",
-          key,
-        );
-        return [key, record?.value ?? null] as const;
-      }),
-    ).then((entries) => Object.fromEntries(entries)),
-    readAccountState(appDb, identity.identityKey, "prefs", "email.json").then(
-      (r) => r?.value ?? null,
-    ),
-    readAccountState(appDb, identity.identityKey, "mail", "drafts.json").then(
-      (r) => r?.value ?? null,
-    ),
-    Promise.all(
-      mailbox.domains.map(async (domain) => {
-        const key = domain.trim().toLowerCase();
-        if (!key || !mailDb) {
-          return {
-            domain: key,
-            total: 0,
-            unread: 0,
-            byAddress: {} as Record<string, { total: number; unread: number }>,
-          };
-        }
-        const [totals, byAddress] = await Promise.all([
-          mailboxCounts(mailDb, "inbound", key),
-          mailboxAddressCounts(mailDb, "inbound", key),
-        ]);
-        return {
-          domain: key,
-          total: totals.total,
-          unread: totals.unread,
-          byAddress,
-        };
-      }),
-    ),
+  const [accountState, counts] = await Promise.all([
+    readMailBootstrapAccountState(appDb, identity.identityKey),
+    mailboxInboundBootstrapCounts(mailDb, mailbox.domains),
   ]);
-
-  const countsByDomain: Record<string, { total: number; unread: number }> = {};
-  const countsByAddress: Record<string, { total: number; unread: number }> =
-    {};
-  for (const entry of domainStats) {
-    if (!entry.domain) continue;
-    countsByDomain[entry.domain] = {
-      total: entry.total,
-      unread: entry.unread,
-    };
-    for (const [address, value] of Object.entries(entry.byAddress)) {
-      const needle = address.trim().toLowerCase();
-      const prev = countsByAddress[needle] ?? { total: 0, unread: 0 };
-      countsByAddress[needle] = {
-        total: prev.total + value.total,
-        unread: prev.unread + value.unread,
-      };
-    }
-  }
 
   const domains = mailbox.domains;
   const emailDomain = domains[0] ?? "";
@@ -106,12 +40,12 @@ mailBootstrap.get("/", async (c) => {
   return c.json({
     domains,
     addresses: mailbox.addresses,
-    ui: uiState,
-    prefs: { email: emailPrefs },
-    drafts: draftsState,
+    ui: accountState.ui,
+    prefs: { email: accountState.emailPrefs },
+    drafts: accountState.drafts,
     counts: {
-      byDomain: countsByDomain,
-      byAddress: countsByAddress,
+      byDomain: counts.byDomain,
+      byAddress: counts.byAddress,
     },
     config: {
       emailDomain,
