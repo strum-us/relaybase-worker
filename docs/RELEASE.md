@@ -2,11 +2,9 @@
 
 Customer-facing Worker installs ship as **pre-built JS bundles** (not TypeScript source).
 
-**Start with the full checklist:** sibling repo [main/docs/release/workflow.md](../main/docs/release/workflow.md).
+**Start with the full checklist:** sibling repo [client/docs/release/workflow.md](../../client/docs/release/workflow.md).
 
-Version pairing policy: [main/docs/release/version-sync.md](../main/docs/release/version-sync.md).
-
-Desktop releases: [main/desktop/docs/release.md](../main/desktop/docs/release.md).
+Version pairing policy: [client/docs/release/version-sync.md](../../client/docs/release/version-sync.md).
 
 Patch-only channel after **0.1.1** (`0.1.2`, `0.1.3`, …). No separate dev / `+local` channel.
 
@@ -41,7 +39,7 @@ Also set `wrangler.toml` → `DESKTOP_VERSION` to the desktop app version this
 Worker build is compatible with (mirrors `WORKER_VERSION`'s upkeep; reported
 in `/health` as `desktopVersion` and read back by the pack script below).
 
-When desktop also ships, bump desktop in sibling `main/` and note pairing in desktop release notes.
+When web client also ships, bump version in sibling `client/` and note pairing in release notes.
 
 ### 2. Release notes (required)
 
