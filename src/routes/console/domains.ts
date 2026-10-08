@@ -93,7 +93,7 @@ consoleDomains.post("/", async (c) => {
 
   try {
     cf = await createCloudflareClient(c.env);
-    let zone = await cf.getZoneByName(domain);
+    let zone = await cf.getZoneForDomain(domain);
     if (!zone) {
       try {
         zone = await cf.createZone(domain);

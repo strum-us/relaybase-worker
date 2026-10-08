@@ -19,11 +19,18 @@ export async function enrichDomainSummariesWithCloudflare(
   cf: CloudflareClient,
   summaries: MailboxDomainSummary[],
 ): Promise<void> {
+  let cachedZones: Awaited<ReturnType<CloudflareClient["listZones"]>> | undefined;
+  try {
+    cachedZones = await cf.listZones();
+  } catch {
+    cachedZones = undefined;
+  }
+
   await Promise.allSettled(
     summaries.map(async (summary) => {
       if (keepMxConflict(summary)) return;
       try {
-        const zone = await cf.getZoneByName(summary.domain);
+        const zone = await cf.getZoneForDomain(summary.domain, cachedZones);
         if (!zone?.id) {
           summary.onboarding = createZoneNotFoundOnboarding(summary.domain);
           return;
