@@ -9,7 +9,9 @@ import {
   zonesListQuery,
   zonesOnPinnedAccount,
   type CfListedZone,
+  type CfZoneDetails,
 } from "./cloudflare-zones.ts";
+import { findParentZoneForDomain } from "./zone-domain.ts";
 import { buildMimeMessage } from "../mail/mime.ts";
 
 const API_BASE = "https://api.cloudflare.com/client/v4";
@@ -461,6 +463,7 @@ export class CloudflareClient {
           name?: string;
           status?: string;
           account?: { id?: string };
+          name_servers?: string[];
         }>
       >(`/zones?${zonesListQuery(page, pinned)}`);
       const batch = data.result ?? [];
@@ -474,20 +477,132 @@ export class CloudflareClient {
     return zonesOnPinnedAccount(zones, pinned);
   }
 
-  async resolveZoneId(domain: string): Promise<string | null> {
+  async getZoneByName(domain: string): Promise<CfZoneDetails | null> {
     if (!this.accountId) return null;
     const name = domain.trim();
     const params = new URLSearchParams({ name });
     params.set("account.id", this.accountId);
     const data = await this.request<
-      Array<{ id: string; name: string; account?: { id?: string } }>
+      Array<{
+        id: string;
+        name: string;
+        status?: string;
+        account?: { id?: string };
+        name_servers?: string[];
+      }>
     >(`/zones?${params.toString()}`);
     const want = name.toLowerCase();
     const zone = data.result?.find((item) => {
       if (item.name.toLowerCase() !== want) return false;
       return zoneBelongsToPinnedAccount(item.account?.id, this.accountId);
     });
+    return zone ? mapCfZoneRow(zone) : null;
+  }
+
+  /**
+   * Resolve the Cloudflare zone that serves `domain`: exact zone name, or the
+   * longest matching parent zone (e.g. mail.kloy.app → kloy.app).
+   */
+  async getZoneForDomain(
+    domain: string,
+    cachedZones?: CfListedZone[],
+  ): Promise<CfZoneDetails | null> {
+    const exact = await this.getZoneByName(domain);
+    if (exact) return exact;
+    const zones = cachedZones ?? (await this.listZones());
+    const parent = findParentZoneForDomain(domain, zones);
+    return parent?.id ? parent : null;
+  }
+
+  async resolveZoneId(
+    domain: string,
+    cachedZones?: CfListedZone[],
+  ): Promise<string | null> {
+    const zone = await this.getZoneForDomain(domain, cachedZones);
     return zone?.id ?? null;
+  }
+
+  /** DNS records Cloudflare expects for Email Routing (optionally on a subdomain host). */
+  async getEmailRoutingDnsRecords(
+    zoneId: string,
+    subdomainHost?: string,
+  ): Promise<
+    Array<{
+      type: string;
+      name: string;
+      content: string;
+      priority?: number;
+      ttl?: number;
+    }>
+  > {
+    const params = new URLSearchParams();
+    const host = subdomainHost?.trim();
+    if (host) params.set("subdomain", host);
+    const qs = params.toString();
+    const path = `/zones/${zoneId}/email/routing/dns${qs ? `?${qs}` : ""}`;
+    const data = await this.request<
+      | Array<{
+          type?: string;
+          name?: string;
+          content?: string;
+          priority?: number;
+          ttl?: number;
+        }>
+      | {
+          record?: Array<{
+            type?: string;
+            name?: string;
+            content?: string;
+            priority?: number;
+            ttl?: number;
+          }>;
+        }
+    >(path);
+    const raw = data.result;
+    const rows = Array.isArray(raw) ? raw : (raw?.record ?? []);
+    const out: Array<{
+      type: string;
+      name: string;
+      content: string;
+      priority?: number;
+      ttl?: number;
+    }> = [];
+    for (const row of rows) {
+      const type = row.type?.trim();
+      const name = row.name?.trim();
+      const content = row.content?.trim();
+      if (!type || !name || !content) continue;
+      out.push({
+        type,
+        name,
+        content,
+        priority: row.priority,
+        ttl: row.ttl,
+      });
+    }
+    return out;
+  }
+
+  /** Create a Cloudflare zone on the pinned account (full setup — NS change required). */
+  async createZone(domain: string): Promise<CfZoneDetails> {
+    const accountId = await this.requireAccountId();
+    const name = domain.trim().toLowerCase();
+    const data = await this.request<{
+      id: string;
+      name: string;
+      status?: string;
+      name_servers?: string[];
+      account?: { id?: string };
+    }>("/zones", {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        account: { id: accountId },
+        type: "full",
+        jump_start: false,
+      }),
+    });
+    return mapCfZoneRow(data.result);
   }
 
   async listDnsRecords(

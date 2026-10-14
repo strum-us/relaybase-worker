@@ -1,0 +1,20 @@
+{
+  "rules": [
+    {
+      "id": "relaybase-install-downloads",
+      "allowed": {
+        "origins": [
+          "https://app.relaybase.email",
+          "https://staging.relaybase.email",
+          "https://relaybase.email",
+          "http://localhost:32830",
+          "http://localhost:32838"
+        ],
+        "methods": ["GET", "HEAD"],
+        "headers": ["Range"]
+      },
+      "exposeHeaders": ["Content-Length", "ETag"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

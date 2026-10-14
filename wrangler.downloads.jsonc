@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "relaybase-downloads",
+  "account_id": "3adf03d991843094a7343eebc0a98007",
+  "compatibility_date": "2026-06-03",
+  "workers_dev": false
+}

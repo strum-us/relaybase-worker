@@ -23,6 +23,6 @@ export type Env = {
   INBOUND_BUCKET_NAME: string;
   /** Set in packed wrangler.toml [vars] at pack time. */
   WORKER_VERSION?: string;
-  /** Desktop app version this Worker build is compatible with. Reported in `/health` as `desktopVersion`; gates mailbox-mode desktop auto-updates. */
-  DESKTOP_VERSION?: string;
+  /** Relaybase app (client `app/`) version this Worker build ships with. Reported in `/health` as `appVersion`. */
+  APP_VERSION?: string;
 };

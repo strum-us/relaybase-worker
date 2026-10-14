@@ -199,6 +199,82 @@ export async function mailboxCounts(
   };
 }
 
+export type MailboxBootstrapCounts = {
+  byDomain: Record<string, MailboxCounts>;
+  byAddress: Record<string, MailboxCounts>;
+};
+
+/**
+ * Inbound totals + per-recipient counts for GET /mail/bootstrap.
+ * One domain GROUP BY query plus one recipients scan (not per-domain loops).
+ */
+export async function mailboxInboundBootstrapCounts(
+  db: MailDb,
+  domains: string[],
+): Promise<MailboxBootstrapCounts> {
+  const byDomain: Record<string, MailboxCounts> = {};
+  const byAddress: Record<string, MailboxCounts> = {};
+  const normalized = [
+    ...new Set(domains.map((d) => d.trim().toLowerCase()).filter(Boolean)),
+  ];
+  if (!db || normalized.length === 0) {
+    return { byDomain, byAddress };
+  }
+
+  for (const domain of normalized) {
+    byDomain[domain] = { total: 0, unread: 0 };
+  }
+
+  const raw: D1Database = db.$client;
+  const placeholders = normalized.map(() => "?").join(",");
+
+  const totalsResult = await raw
+    .prepare(
+      `SELECT domain,
+              COUNT(*) AS total,
+              SUM(CASE WHEN read_at IS NULL THEN 1 ELSE 0 END) AS unread
+       FROM mailbox_messages
+       WHERE kind = 'inbound' AND domain IN (${placeholders})
+       GROUP BY domain`,
+    )
+    .bind(...normalized)
+    .all<{ domain: string; total: number; unread: number }>();
+
+  for (const row of totalsResult.results ?? []) {
+    const domain = row.domain?.trim().toLowerCase();
+    if (!domain) continue;
+    byDomain[domain] = {
+      total: Number(row.total ?? 0),
+      unread: Number(row.unread ?? 0),
+    };
+  }
+
+  const recipientRows = await raw
+    .prepare(
+      `SELECT recipients, read_at FROM mailbox_messages
+       WHERE kind = 'inbound' AND domain IN (${placeholders})`,
+    )
+    .bind(...normalized)
+    .all<{ recipients: string; read_at: string | null }>();
+
+  for (const row of recipientRows.results ?? []) {
+    const addresses = (row.recipients ?? "")
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    const unread = !row.read_at;
+    for (const address of addresses) {
+      const needle = address.trim().toLowerCase();
+      const bucket = byAddress[needle] ?? { total: 0, unread: 0 };
+      bucket.total += 1;
+      if (unread) bucket.unread += 1;
+      byAddress[needle] = bucket;
+    }
+  }
+
+  return { byDomain, byAddress };
+}
+
 /** Per-address counts (To + Cc membership) for the dashboard sidebar. */
 export async function mailboxAddressCounts(
   db: MailDb,

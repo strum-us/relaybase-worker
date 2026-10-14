@@ -94,6 +94,36 @@ describe("CloudflareClient.resolveZoneId", () => {
     }
   });
 
+  it("resolves a parent zone for a subdomain host", async () => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/zones?") && url.includes("name=mail.kloy.app")) {
+        return jsonOk([]);
+      }
+      if (url.includes("/zones?") && url.includes("account.id=")) {
+        return jsonOk([
+          {
+            id: "z-kloy",
+            name: "kloy.app",
+            status: "active",
+            account: { id: ACCOUNT_A },
+          },
+        ]);
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    }) as typeof fetch;
+    try {
+      const cf = new CloudflareClient({
+        accountId: ACCOUNT_A,
+        apiToken: "tok",
+      });
+      assert.equal(await cf.resolveZoneId("mail.kloy.app"), "z-kloy");
+    } finally {
+      globalThis.fetch = previous;
+    }
+  });
+
   it("does not resolve a zone without a pinned account", async () => {
     const previous = globalThis.fetch;
     let called = false;

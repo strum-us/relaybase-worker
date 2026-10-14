@@ -1,6 +1,10 @@
 /** Domains + addresses for the desktop mail client (packaged app). */
 import type { AppDb } from "../../../db/app";
 import {
+  createReadyOnboarding,
+  type DomainOnboardingState,
+} from "../cloudflare/domain-onboarding";
+import {
   addDomain as dbAddDomain,
   getAddress as dbGetAddress,
   readMailbox as dbReadMailbox,
@@ -69,17 +73,7 @@ export type MailboxDomainSummary = {
   r2Provisioned: boolean;
   r2BucketName: string | null;
   r2WorkerReady: boolean;
-  onboarding: {
-    status: "ready";
-    currentStep: null;
-    currentStepLabel: null;
-    lastError: null;
-    lastErrorCode: null;
-    zoneId: null;
-    sendingSubdomainId: null;
-    mxConflicts: [];
-    steps: [];
-  };
+  onboarding: DomainOnboardingState;
 };
 
 export function normalizeDomain(input: string): string {
@@ -176,19 +170,8 @@ export function listDomainSummaries(data: MailboxData): MailboxDomainSummary[] {
     r2Provisioned: true,
     r2BucketName: null,
     r2WorkerReady: true,
-    // Packaged desktop has no Next onboarding pipeline — mark ready so
-    // DomainStore.waitForOnboarding resolves and can seed addresses.
-    onboarding: {
-      status: "ready" as const,
-      currentStep: null,
-      currentStepLabel: null,
-      lastError: null,
-      lastErrorCode: null,
-      zoneId: null,
-      sendingSubdomainId: null,
-      mxConflicts: [] as [],
-      steps: [] as [],
-    },
+    // Overwritten by enrichDomainSummariesWithCloudflare when CF_API_TOKEN is set.
+    onboarding: createReadyOnboarding(null),
   }));
 }
 

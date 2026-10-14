@@ -118,14 +118,26 @@ export async function listSendLogs(
       limit: 1000,
       cursor,
     });
+    const keys: string[] = [];
     for (const object of page.objects) {
       if (!isSendLogKey(object.key)) continue;
-      const id = idFromKey(object.key);
-      const log = await readJson<SendLogEntry>(bucket, object.key);
-      if (!log) continue;
-      // Keep `id` consistent with the key (legacy entries stored their own).
-      if (!log.id) log.id = id;
-      listed.push(log);
+      keys.push(object.key);
+    }
+    const batchSize = 24;
+    for (let i = 0; i < keys.length; i += batchSize) {
+      const slice = keys.slice(i, i + batchSize);
+      const batch = await Promise.all(
+        slice.map(async (key) => {
+          const id = idFromKey(key);
+          const log = await readJson<SendLogEntry>(bucket, key);
+          if (!log) return null;
+          if (!log.id) log.id = id;
+          return log;
+        }),
+      );
+      for (const log of batch) {
+        if (log) listed.push(log);
+      }
     }
     cursor = page.truncated ? page.cursor : undefined;
     if (listed.length >= MAX_LOGS) break;

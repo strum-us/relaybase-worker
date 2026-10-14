@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "stop": [
+      {
+        "command": ".cursor/hooks/duck-launcher-stop.sh"
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": ".cursor/hooks/duck-launcher-stop.sh"
+      }
+    ]
+  },
+  "version": 1
+}

@@ -4,6 +4,7 @@ import {
   isCloudflareMxContent,
   normalizeDnsOwnerName,
 } from "./mx-apex-dns.ts";
+import { ensureEmailRoutingDnsForDomain } from "./subdomain-routing-dns.ts";
 
 export type InboundRoutingEntry = {
   address: string;
@@ -143,17 +144,24 @@ type CfEmailRoutingRule = {
   actions: Array<{ type: string; value?: string[] }>;
 };
 
-async function resolveZoneId(
+async function resolveZoneContext(
   cf: CloudflareClient,
   domain: string,
-): Promise<string> {
-  const zoneId = await cf.resolveZoneId(domain);
-  if (!zoneId) {
+): Promise<{ zoneId: string; zoneName: string }> {
+  const zone = await cf.getZoneForDomain(domain);
+  if (!zone?.id) {
     throw new Error(
       `Could not resolve Cloudflare zone for ${domain} — ensure the domain is on this account`,
     );
   }
-  return zoneId;
+  return { zoneId: zone.id, zoneName: zone.name };
+}
+
+async function resolveZoneId(
+  cf: CloudflareClient,
+  domain: string,
+): Promise<string> {
+  return (await resolveZoneContext(cf, domain)).zoneId;
 }
 
 export type ReenabledInboundRule = {
@@ -370,7 +378,7 @@ export async function ensureInboundRouting(
   workerScriptName: string,
   opts: { forceMxResolve?: boolean } = {},
 ): Promise<InboundRoutingResult> {
-  const zoneId = await resolveZoneId(cf, domain);
+  const { zoneId, zoneName } = await resolveZoneContext(cf, domain);
   const routing = await cf.getEmailRoutingSettings(zoneId);
   if (!routing.enabled) {
     try {
@@ -386,6 +394,8 @@ export async function ensureInboundRouting(
       }
     }
   }
+
+  await ensureEmailRoutingDnsForDomain(cf, zoneId, zoneName, domain);
 
   const existing = await cf.listEmailRoutingRules(zoneId);
   const rules: InboundRoutingResult["rules"] = [];

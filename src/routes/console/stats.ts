@@ -2,10 +2,13 @@ import { Hono } from "hono";
 import type { Env } from "../../env";
 import { requireConsoleSession } from "../../lib/auth/auth";
 import { readMailbox } from "../../lib/catalog/catalog-store";
-import { listKeys } from "../../lib/auth/keys";
-import { listSendLogs, type SendLogEntry } from "../../lib/mail/send-logs";
+import { type SendLogEntry } from "../../lib/mail/send-logs";
 import { createAppDb } from "../../../db/app";
 import { createMailDb } from "../../../db/mail";
+import {
+  buildConsoleDashboardStats,
+  loadSendLogsForRange,
+} from "../../lib/ops/build-console-stats";
 import {
   bucketIndex,
   createBuckets,
@@ -68,82 +71,12 @@ consoleStats.get("/", async (c) => {
   const denied = await requireConsoleSession(c);
   if (denied) return denied;
 
-  const range = parseStatsRange(c.req.query("range"));
-  const domain = c.req.query("domain")?.trim().toLowerCase() || null;
-  const now = Date.now();
-  const since = now - RANGE_MS[range];
-
-  const [mailbox, sendLogs, keys] = await Promise.all([
-    readMailbox(createAppDb(c.env.RELAYBASE_DB)),
-    listSendLogs(c.env.INBOUND, { limit: 500, domain: domain ?? undefined }),
-    listKeys(createAppDb(c.env.RELAYBASE_DB)),
-  ]);
-
-  const addresses = domain
-    ? mailbox.addresses.filter((a) => a.domain === domain)
-    : mailbox.addresses;
-  const domainKeys = domain
-    ? keys.filter((k) => k.domain === domain)
-    : keys;
-
-  const sentBuckets = createBuckets(range, now);
-  const requestBuckets = createBuckets(range, now);
-  const errorBuckets = createBuckets(range, now);
-  const apiEmailBuckets = createBuckets(range, now);
-  const apiKeyBuckets = createBuckets(range, now);
-  const keysUsedInRange = new Set<string>();
-  const keysByBucket = new Map<number, Set<string>>();
-
-  for (const log of sendLogs.logs) {
-    const ts = new Date(log.at).getTime();
-    if (Number.isNaN(ts) || ts < since) continue;
-    const index = bucketIndex(ts, range, now);
-    incrementBucket(sentBuckets, index);
-    incrementBucket(requestBuckets, index);
-    if (!log.ok) incrementBucket(errorBuckets, index);
-    if (isApiSend(log) && log.ok) incrementBucket(apiEmailBuckets, index);
-    if (log.keyId) {
-      keysUsedInRange.add(log.keyId);
-      if (index !== null) {
-        const set = keysByBucket.get(index) ?? new Set<string>();
-        set.add(log.keyId);
-        keysByBucket.set(index, set);
-      }
-    }
-  }
-
-  for (const [index, used] of keysByBucket) {
-    if (index >= 0 && index < apiKeyBuckets.length) {
-      apiKeyBuckets[index].value = used.size;
-    }
-  }
-
-  return c.json({
-    domain,
-    range,
-    workerConnected: true,
-    totals: {
-      domains: domain ? 1 : mailbox.domains.length,
-      addresses: addresses.length,
-      /** Audience + broadcasts live in HQ CRM (`hq/crm`), not Worker D1. */
-      audience: 0,
-      broadcasts: 0,
-      drafts: 0,
-      sent: sumBuckets(sentBuckets),
-      apiKeys: domainKeys.length,
-      apiKeysUsed: keysUsedInRange.size,
-      requests: sumBuckets(requestBuckets),
-      errors: sumBuckets(errorBuckets),
-      apiEmails: sumBuckets(apiEmailBuckets),
-    },
-    series: {
-      sent: sentBuckets,
-      apiKeysUsed: apiKeyBuckets,
-      requests: requestBuckets,
-      errors: errorBuckets,
-      apiEmails: apiEmailBuckets,
-    },
-  });
+  const stats = await buildConsoleDashboardStats(
+    c.env,
+    c.req.query("range"),
+    c.req.query("domain"),
+  );
+  return c.json(stats);
 });
 
 consoleStats.get("/account-stats", async (c) => {
@@ -160,16 +93,14 @@ consoleStats.get("/account-stats", async (c) => {
 
   const [mailbox, sendLogs, inboundRows] = await Promise.all([
     readMailbox(createAppDb(c.env.RELAYBASE_DB)),
-    listSendLogs(c.env.INBOUND, { limit: 500 }),
+    loadSendLogsForRange(c.env, since, null),
     domain
       ? listInboundRowsForAccount(c, domain, email)
       : Promise.resolve([]),
   ]);
 
   const address = mailbox.addresses.find((a) => a.email === email);
-  const fromLogs = sendLogs.logs.filter(
-    (l) => l.from?.toLowerCase() === email,
-  );
+  const fromLogs = sendLogs.filter((l) => l.from?.toLowerCase() === email);
   const receivedMessages = inboundRows;
 
   const receivedBuckets = createBuckets(range, now);
@@ -233,7 +164,7 @@ consoleStats.get("/account-logs", async (c) => {
   const domain = domainFromEmail(email);
 
   const [sendLogs, inboundRows] = await Promise.all([
-    listSendLogs(c.env.INBOUND, { limit: 500 }),
+    loadSendLogsForRange(c.env, 0, null),
     domain
       ? listInboundRowsForAccount(c, domain, email)
       : Promise.resolve([]),
@@ -256,7 +187,7 @@ consoleStats.get("/account-logs", async (c) => {
 
   const rows: LogRow[] = [];
 
-  for (const log of sendLogs.logs) {
+  for (const log of sendLogs) {
     if (log.from?.toLowerCase() !== email) continue;
     rows.push({
       id: log.id,

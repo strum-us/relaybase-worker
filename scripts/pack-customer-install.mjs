@@ -9,8 +9,9 @@
  *   4. Write worker-install-manifest.json (version, zipUrl, sha256, workerJs, notes)
  *   5. Copy ZIP + worker.{version}.js + manifest to RELAYBASE_DOWNLOADS_DIR
  *      (or sibling ../relaybase/hq/website/public/downloads, or dist/downloads).
- *   6. Manifest zipUrl / workerJsUrl point at GitHub Releases
- *      (https://github.com/strum-us/relaybase-worker/releases/download/v{version}/…).
+ *   6. Manifest zipUrl / workerJsUrl point at RELAYBASE_DOWNLOAD_BASE
+ *      (publish sets this to https://downloads.relaybase.email/v{version}).
+ *      Local packs without that env var still point at GitHub Releases.
  */
 import {
   cpSync,
@@ -53,12 +54,12 @@ if (!version || version === "0.0.0") {
 }
 
 /**
- * Read a quoted `[vars]` value (e.g. `DESKTOP_VERSION`) out of the repo's
- * hand-maintained `wrangler.toml`. Unlike `WORKER_VERSION`, the desktop
- * version has no `package.json` field to source from, so the packed install
- * ZIP mirrors whatever the repo's `wrangler.toml` declares. Returns the
- * empty string when the var is absent (packed Worker then reports
- * `desktopVersion: "unknown"` — fail-open, never worse than no gating).
+ * Read a quoted `[vars]` value (e.g. `APP_VERSION`) out of the repo's
+ * hand-maintained `wrangler.toml`. Unlike `WORKER_VERSION`, the app version
+ * has no `package.json` field here to source from, so the packed install ZIP
+ * mirrors whatever the repo's `wrangler.toml` declares. Returns the empty
+ * string when the var is absent (packed Worker then reports
+ * `appVersion: "unknown"`).
  */
 function readWranglerVar(name) {
   const raw = readFileSync(join(serverRoot, "wrangler.toml"), "utf8");
@@ -66,7 +67,7 @@ function readWranglerVar(name) {
   const match = raw.match(re);
   return match ? match[1].trim() : "";
 }
-const desktopVersion = readWranglerVar("DESKTOP_VERSION");
+const appVersion = readWranglerVar("APP_VERSION");
 
 const notesPath = join(serverRoot, "release-notes", `${version}.md`);
 if (!existsSync(notesPath)) {
@@ -136,7 +137,7 @@ compatibility_date = "2025-06-01"
 WORKER_SCRIPT_NAME = "relaybase-api"
 INBOUND_BUCKET_NAME = "relaybase-mailbox"
 WORKER_VERSION = "${version}"
-DESKTOP_VERSION = "${desktopVersion}"
+APP_VERSION = "${appVersion}"
 
 [triggers]
 crons = ["*/15 * * * *"]

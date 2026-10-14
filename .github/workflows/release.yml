@@ -22,8 +22,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Pack and publish GitHub Release
+      - name: Pack and publish GitHub Release + R2
         env:
           GH_TOKEN: ${{ github.token }}
           RELAYBASE_WORKER_GITHUB_REPO: ${{ github.repository }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: bash scripts/publish-github-release.sh
