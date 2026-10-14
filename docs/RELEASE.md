@@ -51,9 +51,9 @@ the bucket keeps the old rules until then.
 ### 1. Version bump
 
 Set the version in [`package.json`](../package.json) and `wrangler.toml` → `WORKER_VERSION`.
-Also set `wrangler.toml` → `DESKTOP_VERSION` to the desktop app version this
-Worker build is compatible with (mirrors `WORKER_VERSION`'s upkeep; reported
-in `/health` as `desktopVersion` and read back by the pack script below).
+Also set `wrangler.toml` → `APP_VERSION` to the Relaybase app (client `app/`,
+and its desktop OTA bundle) version this Worker build ships with (reported in
+`/health` as `appVersion` and read back by the pack script below).
 
 When web client also ships, bump version in sibling `client/` and note pairing in release notes.
 
