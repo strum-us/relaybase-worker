@@ -40,7 +40,7 @@ The same token is required for `publish:github` and as the `CLOUDFLARE_API_TOKEN
 
 Browsers fetch the manifest and ZIP cross-origin, so every app origin must be listed in
 [`downloads-cors.json`](../downloads-cors.json): the web app, staging, local dev, and the
-desktop launcher (`http://127.0.0.1:32838` release, `http://127.0.0.1:32830` `tauri dev`;
+desktop launcher (`http://localhost:32838` release; `tauri dev` uses `http://localhost:32830`;
 see `client/docs/desktop/tauri.md`). Re-run `pnpm run setup:downloads` after editing it —
 the bucket keeps the old rules until then.
 

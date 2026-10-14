@@ -8,8 +8,7 @@
           "https://staging.relaybase.email",
           "https://relaybase.email",
           "http://localhost:32830",
-          "http://127.0.0.1:32830",
-          "http://127.0.0.1:32838"
+          "http://localhost:32838"
         ],
         "methods": ["GET", "HEAD"],
         "headers": ["Range"]
