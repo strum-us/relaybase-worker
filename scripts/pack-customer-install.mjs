@@ -59,7 +59,9 @@ if (!version || version === "0.0.0") {
  * has no `package.json` field here to source from, so the packed install ZIP
  * mirrors whatever the repo's `wrangler.toml` declares. Returns the empty
  * string when the var is absent (packed Worker then reports
- * `appVersion: "unknown"`).
+ * `appVersion: "unknown"`). The generated ZIP also copies that value to
+ * `APP_CLIENT_VERSION` and legacy `DESKTOP_VERSION` so current and older
+ * app installers can still read the ceiling.
  */
 function readWranglerVar(name) {
   const raw = readFileSync(join(serverRoot, "wrangler.toml"), "utf8");
@@ -138,6 +140,8 @@ WORKER_SCRIPT_NAME = "relaybase-api"
 INBOUND_BUCKET_NAME = "relaybase-mailbox"
 WORKER_VERSION = "${version}"
 APP_VERSION = "${appVersion}"
+APP_CLIENT_VERSION = "${appVersion}"
+DESKTOP_VERSION = "${appVersion}"
 
 [triggers]
 crons = ["*/15 * * * *"]
