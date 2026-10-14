@@ -9,8 +9,9 @@
  *   4. Write worker-install-manifest.json (version, zipUrl, sha256, workerJs, notes)
  *   5. Copy ZIP + worker.{version}.js + manifest to RELAYBASE_DOWNLOADS_DIR
  *      (or sibling ../relaybase/hq/website/public/downloads, or dist/downloads).
- *   6. Manifest zipUrl / workerJsUrl point at GitHub Releases
- *      (https://github.com/strum-us/relaybase-worker/releases/download/v{version}/…).
+ *   6. Manifest zipUrl / workerJsUrl point at RELAYBASE_DOWNLOAD_BASE
+ *      (publish sets this to https://downloads.relaybase.email/v{version}).
+ *      Local packs without that env var still point at GitHub Releases.
  */
 import {
   cpSync,

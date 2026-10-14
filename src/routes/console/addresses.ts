@@ -194,7 +194,11 @@ consoleAddresses.post("/", async (c) => {
         domain,
         cfApiTokenPermissions,
       },
-      502,
+      // 422 for permission errors (client-side token issue); 503 for
+      // transient Cloudflare API failures. Never 502 — Cloudflare's edge
+      // replaces 502 responses with its own branded HTML error page, which
+        // the frontend can't parse as JSON (see issue #11).
+      isPermError ? 422 : 503,
     );
   }
 
@@ -288,7 +292,10 @@ consoleAddresses.patch("/", async (c) => {
           code: isPermError ? CF_TOKEN_PERMISSION_ERROR_CODE : undefined,
           domain: current.domain,
         },
-        502,
+        // 422 for permission errors; 503 for transient CF API failures.
+        // Never 502 — Cloudflare's edge replaces it with branded HTML
+        // (see issue #11).
+        isPermError ? 422 : 503,
       );
     }
   }

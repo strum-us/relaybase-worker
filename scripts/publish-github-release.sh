@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Pack the versioned Worker and publish a GitHub Release.
+# Pack the versioned Worker, upload it to R2, then publish the same files
+# as a GitHub Release.
 # Assets: worker.{version}.js, install ZIP (+ alias), worker-install-manifest.json
 set -euo pipefail
 
@@ -14,10 +15,23 @@ fi
 
 TAG="v${VERSION}"
 REPO="${RELAYBASE_WORKER_GITHUB_REPO:-strum-us/relaybase-worker}"
+DOWNLOADS_ORIGIN="${RELAYBASE_DOWNLOADS_ORIGIN:-https://downloads.relaybase.email}"
 export RELAYBASE_DOWNLOADS_DIR="${RELAYBASE_DOWNLOADS_DIR:-$ROOT/dist/downloads}"
 export RELAYBASE_WORKER_GITHUB_REPO="$REPO"
+export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-3adf03d991843094a7343eebc0a98007}"
+
+if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+  echo "CLOUDFLARE_API_TOKEN is required. Install artifacts publish to R2 (${DOWNLOADS_ORIGIN}) and GitHub Releases." >&2
+  echo "Token needs R2 edit on account ${CLOUDFLARE_ACCOUNT_ID}. One-time: pnpm run setup:downloads" >&2
+  exit 1
+fi
+
+# Manifest zipUrl / workerJsUrl point at the public bucket. GitHub keeps a copy of the same bytes.
+export RELAYBASE_DOWNLOAD_BASE="${RELAYBASE_DOWNLOAD_BASE:-${DOWNLOADS_ORIGIN}/v${VERSION}}"
 
 pnpm run pack:customer-install
+
+bash "$ROOT/scripts/publish-r2-downloads.sh"
 
 WORKER_JS="$RELAYBASE_DOWNLOADS_DIR/worker.${VERSION}.js"
 ZIP="$RELAYBASE_DOWNLOADS_DIR/relaybase-worker-install-${VERSION}.zip"
@@ -64,7 +78,8 @@ else
 fi
 
 echo
-echo "Manifest (latest):  https://github.com/${REPO}/releases/latest/download/worker-install-manifest.json"
-echo "ZIP (versioned):    https://github.com/${REPO}/releases/download/${TAG}/relaybase-worker-install-${VERSION}.zip"
-echo "Worker JS:          https://github.com/${REPO}/releases/download/${TAG}/worker.${VERSION}.js"
+echo "R2 manifest:        ${DOWNLOADS_ORIGIN}/worker-install-manifest.json"
+echo "R2 ZIP:             ${DOWNLOADS_ORIGIN}/v${VERSION}/relaybase-worker-install-${VERSION}.zip"
+echo "GitHub manifest:    https://github.com/${REPO}/releases/latest/download/worker-install-manifest.json"
+echo "GitHub ZIP:         https://github.com/${REPO}/releases/download/${TAG}/relaybase-worker-install-${VERSION}.zip"
 echo "Release page:       https://github.com/${REPO}/releases/tag/${TAG}"
