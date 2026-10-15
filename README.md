@@ -2,6 +2,10 @@
 
 # Relaybase Worker
 
+https://github.com/user-attachments/assets/a9b6a926-6b8b-4930-9cdb-356479bb041d
+
+[Download Relaybase](https://relaybase.email/download)
+
 Cloudflare Worker that powers [Relaybase](https://relaybase.xyz) product email — send, receive, inbox API, webhooks, and owner console routes. It runs entirely in **your** Cloudflare account. Relaybase does not host your mail.
 
 This repository is the open-source routing Worker. The Relaybase desktop app is a separate commercial product that connects to a deployed instance of this Worker.
