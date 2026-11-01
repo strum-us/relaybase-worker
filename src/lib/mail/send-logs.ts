@@ -12,6 +12,13 @@ export type SendLogEntry = {
   subject: string | null;
   messageId?: string;
   error?: string;
+  meta?: {
+    stage: "outbound_send";
+    via?: string;
+    hasInReplyTo?: boolean;
+    referencesCount?: number;
+    threadingDropped?: boolean;
+  };
 };
 
 export type SendLogSummary = {

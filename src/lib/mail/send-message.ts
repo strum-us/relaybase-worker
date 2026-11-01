@@ -1,6 +1,7 @@
 import type { Env } from "../../env";
 import { cloudflareSendErrorBody } from "../cloudflare/cloudflare-api-hints";
-import { sendOutboundEmail } from "./email-send";
+import { OutboundSendError, sendOutboundEmail } from "./email-send";
+import { threadingHeaderErrorCode } from "./threading-headers.ts";
 import { recordOpsLog } from "../ops/ops-logs";
 import { recordSendLog } from "./send-logs";
 import { createMailDb } from "../../../db/mail";
@@ -236,6 +237,11 @@ export async function sendMailMessage(
     const meta: Record<string, unknown> = {
       delivered: result.delivered,
       queued: result.queued,
+      stage: "outbound_send",
+      via: result.via,
+      hasInReplyTo: result.hasInReplyTo,
+      referencesCount: result.referencesCount,
+      threadingDropped: result.threadingDropped,
     };
     if (hadBounces) {
       meta.permanentBounces = result.permanentBounces;
@@ -245,7 +251,7 @@ export async function sendMailMessage(
       const error = `All recipients permanently bounced: ${result.permanentBounces.join(", ")}`;
       await persistSendLog(env, {
         ok: false,
-        status: 502,
+        status: 503,
         domain,
         keyId: null,
         keyPrefix: null,
@@ -255,11 +261,18 @@ export async function sendMailMessage(
         subject,
         messageId: result.messageId,
         error,
+        meta: {
+          stage: "outbound_send",
+          via: result.via,
+          hasInReplyTo: result.hasInReplyTo,
+          referencesCount: result.referencesCount,
+          threadingDropped: result.threadingDropped,
+        },
       });
       await recordOpsLog(env.RELAYBASE_LOGS, {
         kind: "send",
         ok: false,
-        status: 502,
+        status: 503,
         source,
         domain,
         fromAddr: from,
@@ -271,8 +284,13 @@ export async function sendMailMessage(
       });
       return {
         response: new Response(
-          JSON.stringify({ error, messageId: result.messageId }),
-          { status: 502, headers: { "Content-Type": "application/json" } },
+          JSON.stringify({
+            error,
+            messageId: result.messageId,
+            stage: "outbound_send",
+            via: result.via,
+          }),
+          { status: 503, headers: { "Content-Type": "application/json" } },
         ),
       };
     }
@@ -292,6 +310,13 @@ export async function sendMailMessage(
       error: hadBounces
         ? `Some recipients permanently bounced: ${result.permanentBounces.join(", ")}`
         : undefined,
+      meta: {
+        stage: "outbound_send",
+        via: result.via,
+        hasInReplyTo: result.hasInReplyTo,
+        referencesCount: result.referencesCount,
+        threadingDropped: result.threadingDropped,
+      },
     });
     await recordOpsLog(env.RELAYBASE_LOGS, {
       kind: "send",
@@ -380,9 +405,12 @@ export async function sendMailMessage(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to send email";
+    const outbound = error instanceof OutboundSendError ? error : null;
+    const hinted = cloudflareSendErrorBody(message);
+    const code = hinted.code ?? threadingHeaderErrorCode(message);
     await persistSendLog(env, {
       ok: false,
-      status: 502,
+      status: 503,
       domain,
       keyId: null,
       keyPrefix: null,
@@ -391,23 +419,53 @@ export async function sendMailMessage(
       to: toJoined,
       subject,
       error: message,
+      meta: {
+        stage: "outbound_send",
+        ...(outbound
+          ? {
+              via: outbound.via,
+              hasInReplyTo: outbound.hasInReplyTo,
+              referencesCount: outbound.referencesCount,
+              threadingDropped: outbound.threadingDropped,
+            }
+          : {}),
+      },
     });
     await recordOpsLog(env.RELAYBASE_LOGS, {
       kind: "send",
       ok: false,
-      status: 502,
+      status: 503,
       source,
       domain,
       fromAddr: from,
       toAddr: toJoined,
       subject,
       error: message,
+      metaJson: JSON.stringify({
+        stage: "outbound_send",
+        ...(outbound
+          ? {
+              via: outbound.via,
+              hasInReplyTo: outbound.hasInReplyTo,
+              referencesCount: outbound.referencesCount,
+              threadingDropped: outbound.threadingDropped,
+            }
+          : {}),
+      }),
     });
     return {
-      response: new Response(JSON.stringify(cloudflareSendErrorBody(message)), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      }),
+      response: new Response(
+        JSON.stringify({
+          error: hinted.error,
+          ...(code ? { code } : {}),
+          stage: "outbound_send",
+          ...(outbound ? { via: outbound.via } : {}),
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     };
   }
 }

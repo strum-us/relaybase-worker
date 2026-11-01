@@ -3,7 +3,8 @@ import type { Env } from "../env";
 import { requireApiKey } from "../lib/auth/auth";
 import { emailMatchesDomain } from "../lib/auth/crypto";
 import { cloudflareSendErrorBody } from "../lib/cloudflare/cloudflare-api-hints";
-import { sendOutboundEmail } from "../lib/mail/email-send";
+import { OutboundSendError, sendOutboundEmail } from "../lib/mail/email-send";
+import { threadingHeaderErrorCode } from "../lib/mail/threading-headers.ts";
 import { recordOpsLog } from "../lib/ops/ops-logs";
 import { recordSendLog } from "../lib/mail/send-logs";
 import { createMailDb } from "../../db/mail";
@@ -53,6 +54,13 @@ async function logAndRespond(
     messageId?: string;
     error?: string;
     metaJson?: string;
+    sendMeta?: {
+      stage: "outbound_send";
+      via?: string;
+      hasInReplyTo?: boolean;
+      referencesCount?: number;
+      threadingDropped?: boolean;
+    };
     opsOk?: boolean;
   },
 ): Promise<Response> {
@@ -67,6 +75,7 @@ async function logAndRespond(
       subject: params.subject ?? null,
       messageId: params.messageId,
       error: params.error,
+      meta: params.sendMeta,
     });
   } catch (error) {
     console.error("Failed to record send log", error);
@@ -209,10 +218,18 @@ send.post("/", async (c) => {
     // Asynchronous bounces arrive later as DSN inbound mail and are logged
     // separately with kind="bounce".
     const hadBounces = result.permanentBounces.length > 0;
+    const sendMeta = {
+      stage: "outbound_send" as const,
+      via: result.via,
+      hasInReplyTo: result.hasInReplyTo,
+      referencesCount: result.referencesCount,
+      threadingDropped: result.threadingDropped,
+    };
     const meta = JSON.stringify({
       delivered: result.delivered,
       queued: result.queued,
       ...(hadBounces ? { permanentBounces: result.permanentBounces } : {}),
+      ...sendMeta,
     });
 
     if (
@@ -223,8 +240,13 @@ send.post("/", async (c) => {
       const error = `All recipients permanently bounced: ${result.permanentBounces.join(", ")}`;
       return logAndRespond(c, {
         ok: false,
-        status: 502,
-        body: { error, messageId: result.messageId },
+        status: 503,
+        body: {
+          error,
+          messageId: result.messageId,
+          stage: "outbound_send",
+          via: result.via,
+        },
         record,
         from,
         to: to.join(", "),
@@ -232,6 +254,7 @@ send.post("/", async (c) => {
         messageId: result.messageId,
         error,
         metaJson: meta,
+        sendMeta,
       });
     }
     const rawMime = buildMimeMessage({
@@ -294,19 +317,50 @@ send.post("/", async (c) => {
         ? `Some recipients permanently bounced: ${result.permanentBounces.join(", ")}`
         : undefined,
       metaJson: meta,
+      sendMeta,
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to send email";
+    const outbound = error instanceof OutboundSendError ? error : null;
+    const hinted = cloudflareSendErrorBody(message);
+    const code = hinted.code ?? threadingHeaderErrorCode(message);
     return logAndRespond(c, {
       ok: false,
-      status: 502,
-      body: cloudflareSendErrorBody(message),
+      status: 503,
+      body: {
+        error: hinted.error,
+        ...(code ? { code } : {}),
+        stage: "outbound_send",
+        ...(outbound ? { via: outbound.via } : {}),
+      },
       record,
       from,
       to: to.join(", "),
       subject,
       error: message,
+      metaJson: JSON.stringify({
+        stage: "outbound_send",
+        ...(outbound
+          ? {
+              via: outbound.via,
+              hasInReplyTo: outbound.hasInReplyTo,
+              referencesCount: outbound.referencesCount,
+              threadingDropped: outbound.threadingDropped,
+            }
+          : {}),
+      }),
+      sendMeta: {
+        stage: "outbound_send",
+        ...(outbound
+          ? {
+              via: outbound.via,
+              hasInReplyTo: outbound.hasInReplyTo,
+              referencesCount: outbound.referencesCount,
+              threadingDropped: outbound.threadingDropped,
+            }
+          : {}),
+      },
     });
   }
 });
