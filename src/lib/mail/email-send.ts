@@ -4,6 +4,11 @@ import {
   CloudflareClient,
 } from "../cloudflare/cloudflare-client";
 import { createCloudflareClient } from "../cloudflare/cloudflare-config";
+import {
+  buildThreadingHeaders,
+  isThreadingHeaderError,
+  type ThreadingHeaders,
+} from "./threading-headers.ts";
 
 export type SendOutboundParams = {
   from: string;
@@ -28,6 +33,39 @@ export type SendOutboundParams = {
     content: ArrayBuffer;
   }>;
 };
+
+export type SendVia = "binding" | "rest_raw" | "rest_structured";
+
+export type SendOutboundResult = CfEmailSendResult & {
+  via: SendVia;
+  threadingDropped: boolean;
+  referencesCount: number;
+  hasInReplyTo: boolean;
+};
+
+export class OutboundSendError extends Error {
+  readonly via: SendVia;
+  readonly threadingDropped: boolean;
+  readonly referencesCount: number;
+  readonly hasInReplyTo: boolean;
+
+  constructor(
+    message: string,
+    meta: {
+      via: SendVia;
+      threadingDropped: boolean;
+      referencesCount: number;
+      hasInReplyTo: boolean;
+    },
+  ) {
+    super(message);
+    this.name = "OutboundSendError";
+    this.via = meta.via;
+    this.threadingDropped = meta.threadingDropped;
+    this.referencesCount = meta.referencesCount;
+    this.hasInReplyTo = meta.hasInReplyTo;
+  }
+}
 
 export function emailBindingConfigured(env: Env): boolean {
   return typeof env.EMAIL?.send === "function";
@@ -86,18 +124,104 @@ async function sendViaBinding(
   };
 }
 
+function restVia(params: SendOutboundParams): Exclude<SendVia, "binding"> {
+  const needsRaw = Boolean(
+    params.fromName?.trim() ||
+      params.inReplyTo?.trim() ||
+      params.references?.trim() ||
+      params.rawAttachments?.length,
+  );
+  return needsRaw ? "rest_raw" : "rest_structured";
+}
+
+function applyThreading(
+  params: SendOutboundParams,
+  threading: ThreadingHeaders,
+): SendOutboundParams {
+  return {
+    ...params,
+    inReplyTo: threading.inReplyTo,
+    references: threading.references,
+  };
+}
+
+async function deliver(
+  env: Env,
+  params: SendOutboundParams,
+): Promise<{ result: CfEmailSendResult; via: SendVia }> {
+  if (emailBindingConfigured(env) && env.EMAIL) {
+    return { result: await sendViaBinding(env.EMAIL, params), via: "binding" };
+  }
+  const cf: CloudflareClient = await createCloudflareClient(env);
+  return { result: await cf.sendEmail(params), via: restVia(params) };
+}
+
+function sendMeta(
+  threading: ThreadingHeaders,
+  via: SendVia,
+  threadingDropped: boolean,
+): {
+  via: SendVia;
+  threadingDropped: boolean;
+  referencesCount: number;
+  hasInReplyTo: boolean;
+} {
+  return {
+    via,
+    threadingDropped,
+    referencesCount: threading.referencesCount,
+    hasInReplyTo: threading.hasInReplyTo,
+  };
+}
+
+function asOutboundError(
+  error: unknown,
+  meta: {
+    via: SendVia;
+    threadingDropped: boolean;
+    referencesCount: number;
+    hasInReplyTo: boolean;
+  },
+): OutboundSendError {
+  if (error instanceof OutboundSendError) return error;
+  const message = error instanceof Error ? error.message : "Failed to send email";
+  return new OutboundSendError(message, meta);
+}
+
 /**
  * Send via the Worker `EMAIL` binding when present; otherwise the REST
  * Email Sending API (`CF_API_TOKEN`). Binding accepts the message and
  * reports delivery asynchronously — bounce arrays stay empty here.
+ *
+ * Threading headers are normalized first. If Cloudflare rejects those
+ * headers, the send is retried once without them.
  */
 export async function sendOutboundEmail(
   env: Env,
   params: SendOutboundParams,
-): Promise<CfEmailSendResult> {
-  if (emailBindingConfigured(env) && env.EMAIL) {
-    return sendViaBinding(env.EMAIL, params);
+): Promise<SendOutboundResult> {
+  const threading = buildThreadingHeaders(params);
+  const prepared = applyThreading(params, threading);
+  const attached = Boolean(threading.inReplyTo || threading.references);
+  const viaGuess: SendVia = emailBindingConfigured(env)
+    ? "binding"
+    : restVia(prepared);
+  try {
+    const { result, via } = await deliver(env, prepared);
+    return { ...result, ...sendMeta(threading, via, false) };
+  } catch (error) {
+    if (!attached || !isThreadingHeaderError(error)) {
+      throw asOutboundError(error, sendMeta(threading, viaGuess, false));
+    }
+    try {
+      const retry = await deliver(env, {
+        ...params,
+        inReplyTo: undefined,
+        references: undefined,
+      });
+      return { ...retry.result, ...sendMeta(threading, retry.via, true) };
+    } catch (retryError) {
+      throw asOutboundError(retryError, sendMeta(threading, viaGuess, false));
+    }
   }
-  const cf: CloudflareClient = await createCloudflareClient(env);
-  return cf.sendEmail(params);
 }
