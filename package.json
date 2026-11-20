@@ -26,7 +26,7 @@
     "db:generate": "drizzle-kit generate --config=drizzle.app.config.ts",
     "release:key": "node scripts/release-key.mjs",
     "pack:release": "node --experimental-strip-types scripts/pack-release.mjs",
-    "publish:release": "node --experimental-strip-types scripts/pack-release.mjs --publish",
+    "publish:release": "RELAYBASE_PUBLISH_PRODUCTION=1 node --experimental-strip-types scripts/pack-release.mjs --publish",
     "publish:release:staging": "node --experimental-strip-types scripts/pack-release.mjs --channel staging --publish"
   },
   "dependencies": {

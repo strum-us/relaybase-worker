@@ -142,7 +142,7 @@ Connect the [Relaybase desktop app](https://relaybase.xyz): paste your Worker UR
 | `pnpm run release:key` | Create the release signing key (`~/.relaybase/release-signing-key.pem`) and add its public half to `src/lib/update/release-keys.json` |
 | `pnpm run pack:release` | Build the signed self-update release into `dist/release/production/` |
 | `pnpm run publish:release` | …and upload it to `downloads.relaybase.email/release/` |
-| `pnpm run publish:release:staging` | Same for the staging channel (`/release-staging/`) |
+| `pnpm run publish:release:staging` | Same for the staging channel (`bundles-staging.relaybase.email/worker-release`, staging-only bucket) |
 
 ## Environment
 

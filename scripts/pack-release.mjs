@@ -8,12 +8,13 @@
  *   worker.js            Worker bundle
  *   archive/<v>/…        the same three files for this version (pinned updates and rollback)
  *
- * With --publish, uploads them to R2 (`relaybase-downloads`, served at
- * https://downloads.relaybase.email) under `release/` (production) or
- * `release-staging/` (--channel staging): the archive first, then worker.js,
- * then the manifest and its signature, so a Worker never sees a manifest
- * whose files are missing. Installed Workers read RELEASE_ORIGIN =
- * https://downloads.relaybase.email/release[-staging].
+ * With --publish, uploads them to R2: production to `relaybase-downloads/release/`
+ * (https://downloads.relaybase.email/release); staging (--channel staging) to the
+ * staging-only bucket `relaybase-bundles-staging/worker-release/`
+ * (https://bundles-staging.relaybase.email/worker-release), so a staging release
+ * never writes to production storage. Order: the archive first, then worker.js,
+ * then the manifest and its signature, so a Worker never sees a manifest whose
+ * files are missing. Installed Workers read RELEASE_ORIGIN.
  *
  *   node scripts/pack-release.mjs [--channel staging] [--publish]
  */
@@ -29,11 +30,12 @@ const args = process.argv.slice(2);
 const channel = args.includes('--channel') ? args[args.indexOf('--channel') + 1] : 'production';
 if (!['production', 'staging'].includes(channel)) throw new Error(`Unknown channel ${channel}`);
 const publish = args.includes('--publish');
-const prefix = channel === 'staging' ? 'release-staging' : 'release';
-const bucket = process.env.RELAYBASE_DOWNLOADS_BUCKET || 'relaybase-downloads';
-const downloadsOrigin = (process.env.RELAYBASE_DOWNLOADS_ORIGIN || 'https://downloads.relaybase.email').replace(/\/$/, '');
-export const releaseOriginFor = (ch) => `${downloadsOrigin}/${ch === 'staging' ? 'release-staging' : 'release'}`;
-const origin = `${downloadsOrigin}/${prefix}`;
+const CHANNELS = {
+  production: { bucket: 'relaybase-downloads', host: 'https://downloads.relaybase.email', prefix: 'release' },
+  staging: { bucket: 'relaybase-bundles-staging', host: 'https://bundles-staging.relaybase.email', prefix: 'worker-release' },
+};
+const { bucket, host, prefix } = CHANNELS[channel];
+const origin = `${host}/${prefix}`;
 
 function fail(message) {
   console.error(`[pack-release] ${message}`);
@@ -136,6 +138,10 @@ console.log(
   `[pack-release] ${channel} ${version}: worker ${(statSync(workerFile).size / 1024).toFixed(0)} KiB, ` +
     `${migrations.length} migrations, rollout ${rolloutPercent}%, auto ${autoUpdate} → ${outDir}`,
 );
+
+if (publish && channel === 'production' && process.env.RELAYBASE_PUBLISH_PRODUCTION !== '1') {
+  fail('publishing the production release needs RELAYBASE_PUBLISH_PRODUCTION=1 (production Workers update themselves from it)');
+}
 
 if (!publish) {
   console.log(`[pack-release] not published (pass --publish). RELEASE_ORIGIN for this channel: ${origin}`);

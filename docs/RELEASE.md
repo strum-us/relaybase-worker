@@ -3,7 +3,7 @@
 > **Since 0.2.0 Workers update themselves.** After the steps below, publish the signed self-update
 > release too: `pnpm run publish:release` (production) — installed Workers pick it up within 30
 > minutes, or when the owner presses Update. Test it on staging first with
-> `pnpm run publish:release:staging` (staging app installs read `/release-staging/`). The signing
+> `pnpm run publish:release:staging` (staging app installs read `https://bundles-staging.relaybase.email/worker-release`, a staging-only bucket). The signing
 > key lives in `~/.relaybase/release-signing-key.pem` on the releasing machine (back it up; see the
 > README "Self-update" section). `auto: false` in the release notes front matter keeps a release
 > from installing itself; `rollout: N` offers it to N% of installs.
