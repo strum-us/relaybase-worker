@@ -1,5 +1,6 @@
-CF_ACCOUNT_ID=your_cloudflare_account_id
-CF_API_TOKEN=your_cloudflare_api_token_with_email_sending_edit
 AUTH_PEPPER=replace_me_with_a_long_random_string
-# Stripe Checkout webhook + license issuance now live in the console.relaybase.xyz
-# Next.js app (see console/), not on this Worker.
+# Local dev never redeploys itself (src/lib/update/policy.ts).
+RELAYBASE_DEV=1
+# The Cloudflare API is reached through the OAuth grant the Relaybase app hands over
+# (/install/handoff); there is no API token. To test grant features locally, also set:
+# CF_GRANT_KEY=<base64 32 bytes>  CF_OAUTH_CLIENT_ID=<client id>  CF_ACCOUNT_ID=<account id>

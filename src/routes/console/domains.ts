@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
 import { requireConsoleSession } from "../../lib/auth/auth";
-import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
+import {
+  cloudflareRuntimeConfigured,
+  createCloudflareClient,
+} from "../../lib/cloudflare/cloudflare-config";
 import { createAppDb } from "../../../db/app";
 import {
   clearConflictingMxRecords,
@@ -38,7 +41,7 @@ consoleDomains.get("/", async (c) => {
   const quick =
     c.req.query("quick") === "1" || c.req.query("quick") === "true";
 
-  if (!quick && c.env.CF_API_TOKEN) {
+  if (!quick && (await cloudflareRuntimeConfigured(c.env))) {
     try {
       const cf = await createCloudflareClient(c.env);
       await enrichDomainSummariesWithCloudflare(cf, summaries);
@@ -103,7 +106,7 @@ consoleDomains.post("/", async (c) => {
     }
     zoneId = zone?.id ?? null;
   } catch {
-    // ignore if CF_API_TOKEN is not configured or resolve fails
+    // ignore when the Worker has no Cloudflare grant or resolve fails
   }
 
   if (cf && zoneId) {

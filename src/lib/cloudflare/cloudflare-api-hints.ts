@@ -1,8 +1,11 @@
 /** Relaybase API code when Cloudflare Email Sending requires Workers Paid. */
 export const CF_WORKERS_PAID_REQUIRED_CODE = "cf_workers_paid_required";
 
-/** Relaybase API code when Cloudflare API token lacks required permissions (e.g. Email Routing). */
-export const CF_TOKEN_PERMISSION_ERROR_CODE = "cf_token_permission_missing";
+/**
+ * Relaybase API code when Cloudflare refused a call made on the stored OAuth grant (scope not
+ * granted, or the grant was revoked). The app answers it with "Reconnect Cloudflare".
+ */
+export const CF_GRANT_PERMISSION_ERROR_CODE = "cf_reconnect_required";
 
 /**
  * Free accounts often get zone Email Sending APIs as [2036] Unauthorized
@@ -60,8 +63,8 @@ export function cloudflareSendErrorBody(message: string): {
   return { error: message };
 }
 
-/** True when Cloudflare rejected a request due to token authentication/permission issues. */
-export function isCloudflareTokenPermissionError(
+/** True when Cloudflare rejected a request made on the grant (authentication / permission). */
+export function isCloudflarePermissionError(
   input: string | Array<{ code?: number; message?: string }> | undefined,
 ): boolean {
   if (!input) return false;
@@ -87,7 +90,7 @@ export function isCloudflareTokenPermissionError(
   return match(input);
 }
 
-/** Human-readable permission hints for Cloudflare API auth failures (code 10000). */
+/** Human-readable hints for Cloudflare API permission failures on the grant (code 10000). */
 export function cloudflarePermissionHint(
   path: string,
   method = "GET",
@@ -98,14 +101,14 @@ export function cloudflarePermissionHint(
   if (p.includes("/email/sending/subdomains")) {
     return [
       `Endpoint: ${m} /zones/{{zone_id}}/email/sending/subdomains`,
-      "Required: Account → Email Sending → Edit",
+      "Needs the Email Sending permission on the Cloudflare connection (Reconnect Cloudflare).",
     ].join("\n");
   }
 
   if (p.includes("/email/sending/send")) {
     return [
       `Endpoint: ${m} /accounts/{{account_id}}/email/sending/send`,
-      "Required: Account → Email Sending → Edit",
+      "Needs the Email Sending permission on the Cloudflare connection (Reconnect Cloudflare).",
       "The From domain must be onboarded in Cloudflare → Email Service → Email Sending.",
       "Before onboarding, you can only send to verified destination addresses.",
     ].join("\n");
@@ -114,29 +117,28 @@ export function cloudflarePermissionHint(
   if (p.includes("/email/routing/enable")) {
     return [
       `Endpoint: ${m} /zones/{{zone_id}}/email/routing/enable`,
-      "Required: Zone → Zone Settings → Edit",
+      "Needs the Email Routing permission on the Cloudflare connection (Reconnect Cloudflare).",
     ].join("\n");
   }
 
   if (p.includes("/email/routing/rules")) {
     return [
       `Endpoint: ${m} /zones/{{zone_id}}/email/routing/rules`,
-      "Required: Zone → Email Routing Rules → Edit",
+      "Needs the Email Routing permission on the Cloudflare connection (Reconnect Cloudflare).",
     ].join("\n");
   }
 
   if (p.includes("/email/routing")) {
     return [
       `Endpoint: ${m} /zones/{{zone_id}}/email/routing`,
-      "Required: Zone → Email Routing Rules → Edit (or Zone → Zone Settings → Edit)",
-      "Ensure this domain is included in the token's Zone Resources (or All zones).",
+      "Needs the Email Routing permission on the Cloudflare connection (Reconnect Cloudflare).",
     ].join("\n");
   }
 
   if (p.includes("/zones") && !p.includes("/email/")) {
     return [
       `Endpoint: ${m} /zones`,
-      "Required: Zone → Zone → Read",
+      "Needs the Zone permission on the Cloudflare connection (Reconnect Cloudflare).",
     ].join("\n");
   }
 
@@ -155,7 +157,7 @@ export function cloudflareSendingErrorHint(
       "Cloudflare returned an internal sending error (10002). Common causes:",
       "• The From domain is not onboarded in Cloudflare Email Sending",
       "• Sending DNS records are missing or not verified yet",
-      "• API token needs Account → Email Sending → Edit",
+      "• The Cloudflare connection lacks Email Sending (Reconnect Cloudflare)",
       "• Before the domain is fully enabled, send only to verified destination addresses",
       "Retry after fixing setup; if it persists, check Cloudflare status or support.",
     ].join("\n");
@@ -177,7 +179,7 @@ export function cloudflareSendingErrorHint(
   }
 
   if (code === 10102 || code === 10103 || msg.includes("forbidden")) {
-    return "API token lacks permission. Verify Zone and Routing permissions for this token.";
+    return "Cloudflare refused this request. Reconnect Cloudflare from Settings › Cloudflare in the Relaybase app.";
   }
 
   if (code === 10100 || msg.includes("upstream")) {

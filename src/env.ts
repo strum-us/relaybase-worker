@@ -12,9 +12,20 @@ export type Env = {
   RELAYBASE_MAIL?: D1Database;
   /** Durable product state (mailbox, audience, broadcasts, keys, tokens, …). */
   RELAYBASE_DB?: D1Database;
-  /** Optional. Not required for mail or the Cloudflare API. */
+  /** Cloudflare account that owns this Worker (set at install). */
   CF_ACCOUNT_ID?: string;
-  CF_API_TOKEN?: string;
+  /**
+   * Cloudflare OAuth grant (src/lib/grant/cf-grant.ts): AES-GCM key (secret) for the stored
+   * refresh token, and the OAuth client the refresh token belongs to. Set by the installer.
+   */
+  CF_GRANT_KEY?: string;
+  CF_OAUTH_CLIENT_ID?: string;
+  /** SHA-256 of the install setup code (secret); guards `/install/handoff`. */
+  RELAYBASE_HANDOFF?: string;
+  /** Release channel base URL for self-update, e.g. https://downloads.relaybase.email/release. */
+  RELEASE_ORIGIN?: string;
+  /** "1" in local dev: never redeploy itself. */
+  RELAYBASE_DEV?: string;
   /** Outbound Email Sending binding (`[[send_email]] name = "EMAIL"`). */
   EMAIL?: SendEmailBinding;
   /** Random pepper for owner passtoken + access-token HMAC. Set once at install. */

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cloudflareAccessTokenOrUndefined } from "./lib/cloudflare/cloudflare-config";
 import type { Env } from "./env";
 import { desktopCors } from "./lib/auth/cors";
 import { probeD1Connection } from "./lib/d1/d1-status";
@@ -11,7 +12,10 @@ import { consoleSendLogs } from "./routes/console/send-logs";
 import { consoleDashboard } from "./routes/console/dashboard";
 import { consoleStats } from "./routes/console/stats";
 import { consoleConnect } from "./routes/console/connect";
-import { consoleCfTokenPermissions } from "./routes/console/cf-token-permissions";
+import { consoleCloudflare } from "./routes/console/cloudflare";
+import { consoleUpdate } from "./routes/console/update";
+import { install } from "./routes/install";
+import { BUILD_VERSION } from "./lib/update/version";
 import { consoleInitDb } from "./routes/console/init-db";
 import { consoleMigrateDb } from "./routes/console/migrate-db";
 import { consoleAddresses } from "./routes/console/addresses";
@@ -58,12 +62,12 @@ app.get("/health", async (c) => {
       c.env.RELAYBASE_MAIL,
       c.env.RELAYBASE_DB,
       c.env.CF_ACCOUNT_ID,
-      c.env.CF_API_TOKEN,
+      await cloudflareAccessTokenOrUndefined(c.env),
     ),
   ]);
   return c.json({
     ok: true,
-    version: c.env.WORKER_VERSION?.trim() || "unknown",
+    version: BUILD_VERSION,
     appVersion: c.env.APP_VERSION?.trim() || "unknown",
     inbound: {
       r2Configured,
@@ -83,13 +87,17 @@ app.get("/health", async (c) => {
   });
 });
 
+// Install handoff: setup-code / reconnect-code guarded, no session.
+app.route("/install", install);
+
 // End-user management (owner-session auth).
 app.route("/console/keys", consoleKeys);
 app.route("/console/ops-logs", consoleOpsLogs);
 app.route("/console/send-logs", consoleSendLogs);
 app.route("/console/branding", consoleBranding);
 app.route("/console/connect", consoleConnect);
-app.route("/console/cf-token-permissions", consoleCfTokenPermissions);
+app.route("/console/cloudflare", consoleCloudflare);
+app.route("/console/update", consoleUpdate);
 app.route("/console/init-db", consoleInitDb);
 app.route("/console/migrate-db", consoleMigrateDb);
 app.route("/console/register-owner", consoleRegisterOwner);

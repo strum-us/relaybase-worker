@@ -98,7 +98,7 @@ async function probeBinding(
   databaseName: string,
   binding: string,
   cfAccountId?: string,
-  cfApiToken?: string,
+  cfAccessToken?: string,
 ): Promise<D1BindingStatus> {
   if (!db) {
     return {
@@ -114,7 +114,7 @@ async function probeBinding(
   }
   let sizeBytes = await databaseSizeBytes(db);
   if (sizeBytes == null) {
-    sizeBytes = await databaseSizeFromCfApi(cfAccountId, cfApiToken, databaseName);
+    sizeBytes = await databaseSizeFromCfApi(cfAccountId, cfAccessToken, databaseName);
   }
   return { configured: true, databaseName, binding, sizeBytes };
 }
@@ -125,7 +125,7 @@ export async function probeD1Connection(
   mail: D1Database | undefined,
   app: D1Database | undefined,
   cfAccountId?: string,
-  cfApiToken?: string,
+  cfAccessToken?: string,
 ): Promise<D1ConnectionStatus> {
   const [logsStatus, mailStatus, appStatus] = await Promise.all([
     probeBinding(
@@ -134,7 +134,7 @@ export async function probeD1Connection(
       D1_LOGS_DATABASE_NAME,
       D1_LOGS_BINDING,
       cfAccountId,
-      cfApiToken,
+      cfAccessToken,
     ),
     probeBinding(
       mail,
@@ -142,7 +142,7 @@ export async function probeD1Connection(
       D1_MAIL_DATABASE_NAME,
       D1_MAIL_BINDING,
       cfAccountId,
-      cfApiToken,
+      cfAccessToken,
     ),
     probeBinding(
       app,
@@ -150,7 +150,7 @@ export async function probeD1Connection(
       D1_APP_DATABASE_NAME,
       D1_APP_BINDING,
       cfAccountId,
-      cfApiToken,
+      cfAccessToken,
     ),
   ]);
   return {

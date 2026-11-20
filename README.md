@@ -78,7 +78,7 @@ corepack enable
 pnpm install
 
 cp .dev.vars.example .dev.vars
-# Set AUTH_PEPPER and CF_API_TOKEN (CF_ACCOUNT_ID is optional)
+# Set AUTH_PEPPER (and RELAYBASE_DEV=1 so the Worker never redeploys itself from local dev)
 
 # Create storage in your account, then paste D1 ids into wrangler.toml
 npx wrangler r2 bucket create relaybase-mailbox
@@ -93,8 +93,14 @@ Set secrets:
 
 ```bash
 npx wrangler secret put AUTH_PEPPER
-npx wrangler secret put CF_API_TOKEN
 ```
+
+There is no Cloudflare API token. The Worker calls the Cloudflare API (domains, DNS, Email
+Routing, Email Sending, its own self-update) with the **Cloudflare OAuth grant** it keeps: the
+Relaybase app hands it over at install, and **Settings › Cloudflare › Reconnect** hands a new one
+over. A Worker deployed with wrangler gets one by running the app's update once
+(Settings › Worker), which adds `CF_GRANT_KEY`, `CF_OAUTH_CLIENT_ID`, `RELEASE_ORIGIN` and hands
+the grant over. See [Self-update](#self-update).
 
 Deploy:
 
@@ -133,6 +139,10 @@ Connect the [Relaybase desktop app](https://relaybase.xyz): paste your Worker UR
 | `pnpm test` | Unit tests |
 | `pnpm run pack:customer-install` | Build versioned install ZIP under `dist/` |
 | `pnpm run publish:github` | Pack and upload a GitHub Release (`v{version}`) |
+| `pnpm run release:key` | Create the release signing key (`~/.relaybase/release-signing-key.pem`) and add its public half to `src/lib/update/release-keys.json` |
+| `pnpm run pack:release` | Build the signed self-update release into `dist/release/production/` |
+| `pnpm run publish:release` | …and upload it to `downloads.relaybase.email/release/` |
+| `pnpm run publish:release:staging` | Same for the staging channel (`/release-staging/`) |
 
 ## Environment
 
@@ -141,8 +151,8 @@ Connect the [Relaybase desktop app](https://relaybase.xyz): paste your Worker UR
 | Secret | Required | Description |
 |--------|----------|-------------|
 | `AUTH_PEPPER` | Yes | Random pepper for owner passtoken hashing and access-token HMAC |
-| `CF_API_TOKEN` | Yes (for DNS/domains) | Zone read + DNS edit + Email Routing rules |
-| `CF_ACCOUNT_ID` | No | Pinned account id; optional — see Relaybase docs on CF OAuth install |
+| `CF_GRANT_KEY` | Installer | AES-GCM key (base64, 32 bytes) for the stored Cloudflare OAuth refresh token. Never rotate it: a new key cannot read the stored grant |
+| `RELAYBASE_HANDOFF` | Installer | SHA-256 of the one-time setup code that guards `/install/handoff` |
 
 ### Vars (`wrangler.toml`)
 
@@ -222,3 +232,28 @@ Ship a new public script with `pnpm run publish:github`.
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+## Self-update
+
+Same model as [Dotnote](https://github.com/strum-us/dotnote/blob/main/docs/self-update.md). The
+Worker replaces its own script with the newest **signed** release from `RELEASE_ORIGIN`
+(`https://downloads.relaybase.email/release`), using an access token minted from its Cloudflare
+OAuth grant (`cf_grant` in `RELAYBASE_DB`, refresh token encrypted with `CF_GRANT_KEY`). Nobody
+signs in to Cloudflare again for an update.
+
+- **Release:** `pnpm run publish:release` packs `worker.js`, the embedded D1 migrations and the
+  release notes into `manifest.json`, signs it (Ed25519, `manifest.json.sig`) and uploads it plus
+  `archive/<version>/`. Workers trust only keys in `src/lib/update/release-keys.json`, then the
+  bundle's SHA-256 from the signed manifest. Release notes front matter: `rollout: 25` (percent of
+  installs offered the release) and `auto: false` (owners start it themselves).
+- **Job:** `update_jobs` in `RELAYBASE_DB`, steps `prepare → migrate → deploy → verify`, one step
+  per request (`POST /console/update/step`, owner session) or per cron run. `migrate` applies the
+  release's migrations through the `d1_migrations` ledger before the new code goes up (they must
+  only add). `deploy` re-PUTs the script with its current bindings, `keep_bindings` for secrets,
+  and the update Cron Trigger. `verify` passes only when the new code answers.
+- **Automatic updates:** the `*/30 * * * *` Cron Trigger (`src/lib/update/schedule.ts`) drives a
+  running job and, unless the owner turned it off (`POST /console/update/auto`), starts one for a
+  newer release that is not held by its rollout, not `auto: false`, and not tried before.
+- **Routes:** `GET /console/update/check`, `/status`; `POST /start`, `/step`, `/retry`, `/cancel`,
+  `/rollback`, `/auto`. `GET /console/cloudflare` (grant status), `POST /console/cloudflare/reconnect-code`.
+  `POST /install/prove`, `/install/handoff` (setup or reconnect code; no session).

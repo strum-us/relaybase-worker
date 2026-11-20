@@ -9,10 +9,9 @@ import {
   removeInboundWorkerRouting,
 } from "../../lib/cloudflare/inbound-routing";
 import {
-  CF_TOKEN_PERMISSION_ERROR_CODE,
-  isCloudflareTokenPermissionError,
+  CF_GRANT_PERMISSION_ERROR_CODE,
+  isCloudflarePermissionError,
 } from "../../lib/cloudflare/cloudflare-api-hints";
-import { probeCfApiTokenPermissions } from "../../lib/cloudflare/cloudflare-probe";
 import { pinnedCfAccountId } from "../../lib/cloudflare/pinned-cf-account";
 import {
   normalizeDomain,
@@ -167,34 +166,15 @@ consoleAddresses.post("/", async (c) => {
       error instanceof Error
         ? error.message
         : "Failed to configure inbound routing";
-    const isPermError = isCloudflareTokenPermissionError(message);
-
-    // Run the permission probe inline so the desktop can show exactly
-    // which row failed (Zone Read, Email Routing Edit, DNS Edit) instead
-    // of a generic "Email Routing permissions" toast.
-    let cfApiTokenPermissions = null;
-    if (isPermError) {
-      try {
-        const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
-        const pinnedAccountId = await pinnedCfAccountId(c.env);
-        const probe = await probeCfApiTokenPermissions(
-          c.env.CF_API_TOKEN ?? "",
-          { knownDomains: mailbox.domains, pinnedAccountId },
-        );
-        cfApiTokenPermissions = probe.permissions;
-      } catch {
-        // ignore probe failure — still return the error code
-      }
-    }
+    const isPermError = isCloudflarePermissionError(message);
 
     return c.json(
       {
         error: `Could not configure inbox for ${emails.join(", ")}: ${message}`,
-        code: isPermError ? CF_TOKEN_PERMISSION_ERROR_CODE : undefined,
+        code: isPermError ? CF_GRANT_PERMISSION_ERROR_CODE : undefined,
         domain,
-        cfApiTokenPermissions,
       },
-      // 422 for permission errors (client-side token issue); 503 for
+      // 422 for permission errors (Reconnect Cloudflare); 503 for
       // transient Cloudflare API failures. Never 502 — Cloudflare's edge
       // replaces 502 responses with its own branded HTML error page, which
         // the frontend can't parse as JSON (see issue #11).
@@ -285,11 +265,11 @@ consoleAddresses.patch("/", async (c) => {
         error instanceof Error
           ? error.message
           : "Failed to update inbound routing";
-      const isPermError = isCloudflareTokenPermissionError(message);
+      const isPermError = isCloudflarePermissionError(message);
       return c.json(
         {
           error: message,
-          code: isPermError ? CF_TOKEN_PERMISSION_ERROR_CODE : undefined,
+          code: isPermError ? CF_GRANT_PERMISSION_ERROR_CODE : undefined,
           domain: current.domain,
         },
         // 422 for permission errors; 503 for transient CF API failures.

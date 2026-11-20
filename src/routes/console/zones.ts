@@ -1,11 +1,14 @@
 import { Hono } from "hono";
 import type { Env } from "../../env";
 import { requireConsoleSession } from "../../lib/auth/auth";
-import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
+import {
+  CLOUDFLARE_NOT_CONNECTED_MESSAGE,
+  createCloudflareClient,
+} from "../../lib/cloudflare/cloudflare-config";
 
 const consoleZones = new Hono<{ Bindings: Env }>();
 
-/** List Cloudflare zones on the pinned Worker account (`CF_API_TOKEN`). */
+/** List Cloudflare zones on the pinned Worker account (stored Cloudflare OAuth grant). */
 consoleZones.get("/", async (c) => {
   const denied = await requireConsoleSession(c);
   if (denied) return denied;
@@ -21,7 +24,7 @@ consoleZones.get("/", async (c) => {
         error:
           error instanceof Error
             ? error.message
-            : "Cloudflare API is not configured on this worker — add a CF_API_TOKEN secret (Email Routing + Zone Read + DNS) so the Worker can manage domains and DNS",
+            : CLOUDFLARE_NOT_CONNECTED_MESSAGE,
       },
       503,
     );

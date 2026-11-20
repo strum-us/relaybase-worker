@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cloudflareAccessTokenOrUndefined } from "../../lib/cloudflare/cloudflare-config";
 import type { Env } from "../../env";
 import { requireConsoleSession } from "../../lib/auth/auth";
 import { probeD1Connection } from "../../lib/d1/d1-status";
@@ -29,7 +30,7 @@ consoleOpsLogs.get("/", async (c) => {
       c.env.RELAYBASE_MAIL,
       c.env.RELAYBASE_DB,
       c.env.CF_ACCOUNT_ID,
-      c.env.CF_API_TOKEN,
+      await cloudflareAccessTokenOrUndefined(c.env),
     ),
   ]);
 

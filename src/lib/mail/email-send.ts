@@ -190,7 +190,7 @@ function asOutboundError(
 
 /**
  * Send via the Worker `EMAIL` binding when present; otherwise the REST
- * Email Sending API (`CF_API_TOKEN`). Binding accepts the message and
+ * Email Sending API (access token from the stored Cloudflare grant). Binding accepts the message and
  * reports delivery asynchronously — bounce arrays stay empty here.
  *
  * Threading headers are normalized first. If Cloudflare rejects those

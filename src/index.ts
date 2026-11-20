@@ -2,6 +2,8 @@ import type { Env } from "./env";
 import app from "./app";
 import { handleInboundEmail } from "./inbound";
 import { runInboundIndexCron } from "./lib/mail/inbound-index-cron";
+import { UPDATE_CRON } from "./lib/update/cron";
+import { runScheduledUpdate } from "./lib/update/schedule";
 import { enqueueInboundEvent } from "./lib/mail/inbound-events";
 import { recordOpsLog } from "./lib/ops/ops-logs";
 import { deliverWebhooks } from "./lib/catalog/webhooks";
@@ -18,10 +20,19 @@ async function dispatchInboundEvent(
 export default {
   fetch: app.fetch,
   async scheduled(
-    _controller: ScheduledController,
+    controller: ScheduledController,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    if (controller.cron === UPDATE_CRON) {
+      // Self-update (src/lib/update/schedule.ts) on the stored Cloudflare OAuth grant.
+      ctx.waitUntil(
+        runScheduledUpdate(env).catch((error) => {
+          console.error("Scheduled update failed", error);
+        }),
+      );
+      return;
+    }
     ctx.waitUntil(
       runInboundIndexCron(env).catch((error) => {
         console.error("Inbound index cron failed", error);

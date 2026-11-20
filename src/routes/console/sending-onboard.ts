@@ -4,13 +4,12 @@ import { requireConsoleSession } from "../../lib/auth/auth";
 import {
   cloudflareSendErrorBody,
   isCloudflarePlanError,
-  isCloudflareTokenPermissionError,
+  isCloudflarePermissionError,
 } from "../../lib/cloudflare/cloudflare-api-hints";
 import { createCloudflareClient } from "../../lib/cloudflare/cloudflare-config";
 import { onboardSendingDomain } from "../../lib/cloudflare/sending-onboard";
 import { createAppDb } from "../../../db/app";
 import { readMailbox } from "../../lib/catalog/catalog-store";
-import { probeCfApiTokenPermissions } from "../../lib/cloudflare/cloudflare-probe";
 import { pinnedCfAccountId } from "../../lib/cloudflare/pinned-cf-account";
 
 const consoleSendingOnboard = new Hono<{ Bindings: Env }>();
@@ -55,20 +54,9 @@ consoleSendingOnboard.post("/", async (c) => {
   }
 
   try {
-    // Read known domains for the permission probe fallback.
-    let knownDomains: string[] = [];
-    try {
-      const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
-      knownDomains = mailbox.domains;
-    } catch {
-      // ignore
-    }
     const result = await onboardSendingDomain(cf, domain, {
       confirmReplace,
       accountId: bodyAccountId || cf.accountId || c.env.CF_ACCOUNT_ID,
-      cfApiToken: c.env.CF_API_TOKEN,
-      knownDomains,
-      pinnedAccountId: bodyAccountId || cf.accountId || c.env.CF_ACCOUNT_ID,
     });
     if (result.ok) {
       return c.json({ domain: result.domain });
@@ -101,15 +89,14 @@ consoleSendingOnboard.post("/", async (c) => {
         403,
       );
     }
-    if (result.code === "cf_token_permission_missing") {
+    if (result.code === "cf_reconnect_required") {
       return c.json(
         {
           error: result.error,
           code: result.code,
           domain: result.domain,
-          cfApiTokenPermissions: result.cfApiTokenPermissions,
         },
-        502,
+        422,
       );
     }
     return c.json(
@@ -136,34 +123,15 @@ consoleSendingOnboard.post("/", async (c) => {
       );
     }
     // Last-resort: detect permission errors thrown outside onboardSendingDomain.
-    if (isCloudflareTokenPermissionError(message) && c.env.CF_API_TOKEN) {
-      let cfApiTokenPermissions = null;
-      try {
-        let knownDomains: string[] = [];
-        try {
-          const mailbox = await readMailbox(createAppDb(c.env.RELAYBASE_DB));
-          knownDomains = mailbox.domains;
-        } catch {
-          // ignore
-        }
-        const pinnedAccountId = await pinnedCfAccountId(c.env);
-        const probe = await probeCfApiTokenPermissions(
-          c.env.CF_API_TOKEN,
-          { knownDomains, pinnedAccountId },
-        );
-        cfApiTokenPermissions = probe.permissions;
-      } catch {
-        // ignore
-      }
+    if (isCloudflarePermissionError(message)) {
       return c.json(
         {
           error:
-            "Cloudflare API token lacks a required permission. Check the permission rows below.",
-          code: "cf_token_permission_missing",
+            "Cloudflare refused this request on the stored connection. Reconnect Cloudflare from Settings › Cloudflare.",
+          code: "cf_reconnect_required",
           domain,
-          cfApiTokenPermissions,
         },
-        502,
+        422,
       );
     }
     return c.json({ error: message }, 502);

@@ -170,7 +170,7 @@ export function listDomainSummaries(data: MailboxData): MailboxDomainSummary[] {
     r2Provisioned: true,
     r2BucketName: null,
     r2WorkerReady: true,
-    // Overwritten by enrichDomainSummariesWithCloudflare when CF_API_TOKEN is set.
+    // Overwritten by enrichDomainSummariesWithCloudflare when the Worker holds a Cloudflare grant.
     onboarding: createReadyOnboarding(null),
   }));
 }

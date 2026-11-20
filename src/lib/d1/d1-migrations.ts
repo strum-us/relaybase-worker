@@ -126,6 +126,7 @@ async function stampMigration(db: D1Database, name: string): Promise<void> {
 async function applyPendingForTarget(
   env: Env,
   target: MigrationTarget,
+  migrations: readonly { target: MigrationTarget; name: string; sql: string }[] = MIGRATIONS,
 ): Promise<DbMigrationResult> {
   const binding = bindingFor(target);
   const db = dbFor(env, target);
@@ -152,7 +153,7 @@ async function applyPendingForTarget(
       .run();
 
     const appliedSet = await listAppliedMigrations(db);
-    const targetMigrations = MIGRATIONS.filter((m) => m.target === target);
+    const targetMigrations = migrations.filter((m) => m.target === target);
     const applied: string[] = [];
     const skipped: string[] = [];
 
@@ -253,5 +254,32 @@ export async function applyPendingMigrations(env: Env): Promise<{
     errors: results
       .filter((r) => r.error)
       .map((r) => `${r.binding}: ${r.error}`),
+  };
+}
+
+/** Names already recorded in a target database's `d1_migrations` ledger. */
+export async function appliedMigrationNames(env: Env, target: MigrationTarget): Promise<Set<string>> {
+  const db = dbFor(env, target);
+  return db ? listAppliedMigrations(db) : new Set();
+}
+
+/**
+ * Apply a release's migrations (self-update, src/lib/update/jobs.ts) through
+ * the same ledger as init-db / migrate-db, so a file is applied once whichever
+ * path ran it. `migrations` lists every file of the release in order; files
+ * already recorded are skipped.
+ */
+export async function applyMigrationList(
+  env: Env,
+  migrations: readonly { target: MigrationTarget; name: string; sql: string }[],
+): Promise<{ applied: string[]; errors: string[] }> {
+  const results: DbMigrationResult[] = [];
+  for (const target of MIGRATION_TARGETS) {
+    if (!migrations.some((m) => m.target === target)) continue;
+    results.push(await applyPendingForTarget(env, target, migrations));
+  }
+  return {
+    applied: results.flatMap((r) => r.applied),
+    errors: results.filter((r) => r.error).map((r) => `${r.binding}: ${r.error}`),
   };
 }

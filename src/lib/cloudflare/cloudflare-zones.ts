@@ -31,7 +31,7 @@ export function mapCfZoneRow(zone: {
 
 /**
  * Keep zones on the pinned CF account only. No pin → empty.
- * A user API token can see every account the user belongs to; import and
+ * A Cloudflare grant can see every account the user belongs to; import and
  * sending health must never use that unscoped list.
  */
 export function zonesOnPinnedAccount<T extends { accountId?: string }>(

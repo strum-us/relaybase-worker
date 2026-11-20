@@ -1,50 +1,43 @@
 import type { Env } from "../../env";
+import { mintAccessToken, readConnection } from "../grant/cf-grant.ts";
 import { normalizeCfAccountId } from "./cf-account-id.ts";
 import { CloudflareClient } from "./cloudflare-client.ts";
 
-export type CloudflareRuntimeConfig = {
-  /** May be empty — resolve from the token when an account-scoped path is used. */
-  accountId: string;
-  apiToken: string;
-};
+/** Shown wherever a Cloudflare API call needs the grant and the Worker has none. */
+export const CLOUDFLARE_NOT_CONNECTED_MESSAGE =
+  "This Relaybase Worker is not connected to Cloudflare. Reconnect Cloudflare from Settings › Cloudflare in the Relaybase app.";
 
 /**
- * Read the Worker's Cloudflare runtime credentials. `CF_API_TOKEN` is
- * required. `CF_ACCOUNT_ID` is optional (dashboard secret or install PUT).
- * Used for Email Routing / DNS / zone API — not for send when the EMAIL
- * binding is present. Missing token returns null; missing account id does not.
+ * Cloudflare API client on an access token minted from the stored OAuth grant
+ * (src/lib/grant/cf-grant.ts). Used for zones, DNS, Email Routing, Email
+ * Sending and D1 status — not for send when the EMAIL binding is present.
  */
-export async function readCloudflareRuntimeConfig(
-  env: Env,
-): Promise<CloudflareRuntimeConfig | null> {
-  const apiToken = env.CF_API_TOKEN?.trim() ?? "";
-  if (!apiToken) return null;
-  const accountId = normalizeCfAccountId(env.CF_ACCOUNT_ID) ?? "";
-  return { accountId, apiToken };
-}
-
 export async function createCloudflareClient(
   env: Env,
   opts?: { accountId?: string | null },
 ): Promise<CloudflareClient> {
-  const config = await readCloudflareRuntimeConfig(env);
-  if (!config) {
-    throw new Error(
-      "Cloudflare API is not configured on this worker — add a CF_API_TOKEN secret (Email Routing + Zone Read + DNS) so the Worker can manage domains and DNS",
-    );
-  }
-  const fromCaller = normalizeCfAccountId(opts?.accountId) ?? "";
-  let accountId = fromCaller || config.accountId;
-  if (!accountId) {
-    const { pinnedCfAccountId } = await import("./pinned-cf-account.ts");
-    accountId = await pinnedCfAccountId(env);
-  }
-  return new CloudflareClient({
-    accountId,
-    apiToken: config.apiToken,
-  });
+  const connection = await readConnection(env);
+  if (!connection.connected) throw new Error(CLOUDFLARE_NOT_CONNECTED_MESSAGE);
+  const minted = await mintAccessToken(env);
+  const accountId =
+    normalizeCfAccountId(opts?.accountId) ||
+    normalizeCfAccountId(env.CF_ACCOUNT_ID) ||
+    normalizeCfAccountId(minted.accountId) ||
+    "";
+  return new CloudflareClient({ accountId, apiToken: minted.accessToken });
 }
 
+/** Whether this Worker holds a Cloudflare grant it can call the API with. */
 export async function cloudflareRuntimeConfigured(env: Env): Promise<boolean> {
-  return (await readCloudflareRuntimeConfig(env)) !== null;
+  return (await readConnection(env)).connected;
+}
+
+/** An access token for best-effort reads (D1 sizes); undefined when there is no grant or it cannot be renewed. */
+export async function cloudflareAccessTokenOrUndefined(env: Env): Promise<string | undefined> {
+  try {
+    if (!(await readConnection(env)).connected) return undefined;
+    return (await mintAccessToken(env)).accessToken;
+  } catch {
+    return undefined;
+  }
 }
